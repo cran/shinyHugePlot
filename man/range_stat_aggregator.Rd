@@ -3,13 +3,15 @@
 \docType{class}
 \name{range_stat_aggregator}
 \alias{range_stat_aggregator}
-\title{R6 Class for aggregation which returns the 3 types of the statistical values}
+\title{Aggregation which returns the ranges and nominal values
+within small data ranges}
 \format{
 An \code{R6::R6Class} object
 }
 \description{
 This aggregator divides the data into no-overlapping intervals
-and calculate specific statistical values such as the mean.
+and calculate specific statistics that represents the range and nominal
+values of the data, such as the max, min and mean.
 }
 \examples{
 data(noise_fluct)
@@ -21,13 +23,13 @@ plot(d_agg$x, d_agg$yupr, type = "l")
 
 }
 \section{Super class}{
-\code{\link[shinyHugePlot:abstract_aggregator]{shinyHugePlot::abstract_aggregator}} -> \code{custom_stat_aggregator}
+\code{\link[shinyHugePlot:abstract_aggregator]{shinyHugePlot::abstract_aggregator}} -> \code{range_stat_aggregator}
 }
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
-\item \href{#method-custom_stat_aggregator-new}{\code{range_stat_aggregator$new()}}
-\item \href{#method-custom_stat_aggregator-clone}{\code{range_stat_aggregator$clone()}}
+\item \href{#method-range_stat_aggregator-new}{\code{range_stat_aggregator$new()}}
+\item \href{#method-range_stat_aggregator-clone}{\code{range_stat_aggregator$clone()}}
 }
 }
 \if{html}{\out{
@@ -38,15 +40,15 @@ plot(d_agg$x, d_agg$yupr, type = "l")
 </details>
 }}
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-custom_stat_aggregator-new"></a>}}
-\if{latex}{\out{\hypertarget{method-custom_stat_aggregator-new}{}}}
+\if{html}{\out{<a id="method-range_stat_aggregator-new"></a>}}
+\if{latex}{\out{\hypertarget{method-range_stat_aggregator-new}{}}}
 \subsection{Method \code{new()}}{
 Constructor of the Aggregator.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{range_stat_aggregator$new(
-  ylwr = function(x) min(x, na.rm = TRUE),
-  y = function(x) mean(x, na.rm = TRUE),
-  yupr = function(x) max(x, na.rm = TRUE),
+  ylwr = min,
+  y = mean,
+  yupr = max,
   interleave_gaps = FALSE,
   nan_position = "end"
 )}\if{html}{\out{</div>}}
@@ -58,7 +60,7 @@ Constructor of the Aggregator.
 \item{\code{yupr, y, ylwr}}{Functions.
 Statistical values are calculated using this function.
 By default, \code{max, mean, min}, respectively.
-Note that the functions need to deal with NA values.}
+Note that the NA values are omitted automatically.}
 
 \item{\code{interleave_gaps, nan_position}}{Arguments pass to the constructor of
 the \code{abstract_aggregator} class.}
@@ -67,8 +69,8 @@ the \code{abstract_aggregator} class.}
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-custom_stat_aggregator-clone"></a>}}
-\if{latex}{\out{\hypertarget{method-custom_stat_aggregator-clone}{}}}
+\if{html}{\out{<a id="method-range_stat_aggregator-clone"></a>}}
+\if{latex}{\out{\hypertarget{method-range_stat_aggregator-clone}{}}}
 \subsection{Method \code{clone()}}{
 The objects of this class are cloneable with this method.
 \subsection{Usage}{

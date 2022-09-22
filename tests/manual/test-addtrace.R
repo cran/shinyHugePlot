@@ -19,14 +19,10 @@ app$show_shiny()
 app <- shiny_downsampler$new()
 app$add_trace(
   x = d$x, y = d$y, type = "scatter", mode = "lines",
-  aggregator = mean_aggregator$new()
+  aggregator = range_stat_aggregator$new(y = NULL), n_out = 100
+)
+app$add_trace(
+  x = d$x, y = d$y, type = "scatter", mode = "lines",
+  aggregator = min_max_aggregator$new(), n_out = 100
   )
-app$add_trace(
-  x = d$x, y = d$y, type = "scatter", mode = "lines",
-  aggregator = min_aggregator$new()
-)
-app$add_trace(
-  x = d$x, y = d$y, type = "scatter", mode = "lines",
-  aggregator = max_aggregator$new()
-)
 app$show_shiny()

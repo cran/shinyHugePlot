@@ -3,13 +3,14 @@
 \docType{class}
 \name{min_max_aggregator}
 \alias{min_max_aggregator}
-\title{R6 Class for Min-Max Aggregation with fully overlapping windows}
+\title{Aggregation using local minimum and maximum values.}
 \format{
 An \code{R6::R6Class} object
 }
 \description{
-Divide the data into fully overlapping intervals
+Divide the data into small data ranges
 and find the maximum and minimum values of each.
+\code{n_out} must be even number.
 }
 \examples{
 data(noise_fluct)

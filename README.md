@@ -1,27 +1,35 @@
 
 # shinyHugePlot
 
+[![CRAN
+status](https://www.r-pkg.org/badges/version/shinyHugePlot)](https://CRAN.R-project.org/package=shinyHugePlot)
+
 The goal of shinyHugePlot is to efficiently plot the data of which
 sample size is very large, such as long time-series data. Using this
-package, small number of samples are obtained from huge-sized data
-automatically. Moreover, it can interactively change the samples
-according to the plot range the user defined.
+package, small number of samples are obtained automatically from
+huge-sized data. Moreover, it can interactively change the samples
+according to the plot range which is defined by the user.
 
 For instance, assume that there is a data of which sample size is 1e8.
 
-Without this package, to plot the overall data takes much time. It is
-difficult to study the macro and micro structure of the data because of
-the large sample size and the resolution of the chart. To divide the
-data into intervals and calculate statistical values such as mean may be
-a good approach for understanding the macro trend of the data; however,
-the micro structure will be lost and it is necessary to extract a part
-of the data and plot it.
+Without this package, many charts are required: one for illustrating the
+overall data and ones for illustrating small parts of the data. To plot
+the overall data is necessary; however, it takes much time due to
+computational cost. It may be difficult to correctly illustrate the data
+because of the graphical resolution. Dividing the data into intervals
+and calculate statistical values such as mean may be a good approach for
+avoiding the problem due to the graphical resolution and for
+understanding the trend of the data; however, it requires repeated trial
+and error and the small fluctuations of the data will be lost. It is
+frequently necessary to extract a specific part of the data to study the
+small fluctuations; however, it also requires repeated trial and error.
 
-Using this package, the automatically obtained samples are plotted
-quickly, which help understand the macro structure of the data.
-Moreover, zooming up the data provides new samples and illustrates the
-micro structure of the data. Both the macro and micro structures of the
-data can be easily and accurately understood by this package.
+With this package, necessary charts are obtained easily and quickly.
+Small number of samples are automatically obtained on a basis of
+specific algorithms, which helps understand the overall trend of the
+data. Zooming up the data provides new samples and illustrates the small
+fluctuations of the data. Both the overall and small fluctuations of the
+data can be easily and accurately understood.
 
 ## Installation
 
@@ -38,13 +46,6 @@ like so:
 install.packages("remotes")
 remotes::install_gitlab("jtagusari/shinyHugePlot")
 ```
-
-## NOTE
-
-This package was originally developed for displaying the data using
-`dash` app. See `plotlyHugeData` at
-<https://gitlab.com/jtagusari/plotlyHugeData> if you would like to use
-`dash` app.
 
 ## Example
 
@@ -157,6 +158,13 @@ method, such as just showing minimum, mean and max values, as follows.
 fig <- plot_ly(x = d$x, y = d$y, type = "scatter", mode = "lines") 
 shiny_hugeplot(fig, n_out = 100, aggregator = range_stat_aggregator)
 ```
+
+## NOTE
+
+This package was originally developed for displaying the data using
+`dash` app. See `plotlyHugeData` at
+<https://gitlab.com/jtagusari/plotlyHugeData> if you would like to use
+`dash` app.
 
 ## LICENSE
 

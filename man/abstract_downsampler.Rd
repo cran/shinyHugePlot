@@ -3,7 +3,7 @@
 \docType{class}
 \name{abstract_downsampler}
 \alias{abstract_downsampler}
-\title{R6 class of abstract down-sampler}
+\title{R6 abstract class for down-sampling}
 \format{
 An \code{R6::R6Class} object
 }
@@ -25,6 +25,8 @@ is not available on a stand-alone basis.
 \item \href{#method-abstract_downsampler-new}{\code{abstract_downsampler$new()}}
 \item \href{#method-abstract_downsampler-add_trace}{\code{abstract_downsampler$add_trace()}}
 \item \href{#method-abstract_downsampler-get_figure_data}{\code{abstract_downsampler$get_figure_data()}}
+\item \href{#method-abstract_downsampler-get_orig_data}{\code{abstract_downsampler$get_orig_data()}}
+\item \href{#method-abstract_downsampler-set_orig_data}{\code{abstract_downsampler$set_orig_data()}}
 \item \href{#method-abstract_downsampler-clone}{\code{abstract_downsampler$clone()}}
 }
 }
@@ -58,14 +60,9 @@ Whether down-sampling is done. By default \code{TRUE}.}
 The number of samples shown after down-sampling. By default 1000.}
 
 \item{\code{aggregator}}{An instance of an R6 class for aggregation.
-Select one out of
-\code{LTTB_aggregator}, \code{min_max_ovlp_aggregator},
-\code{min_max_aggregator}, \code{eLTTB_aggregator},
-\code{nth_pnt_aggregator}, \code{custom_stat_aggregator},
-\code{mean_aggregator}, \code{median_aggregator},
-\code{min_aggregator}, \code{max_aggregator},
-or \code{custom_func_aggregator}.
-By default \code{eLTTB_aggregator}.}
+Select an aggregation function. The list of the functions are obtained
+using \code{list_aggregators}.
+By default, \code{eLTTB_aggregator$new()}.}
 
 \item{\code{legend_options}}{Named list, optional.
 Names of the elements are \code{prefix_downsample},
@@ -139,6 +136,67 @@ Returns the list of the data used for the plotly figure.
 \if{html}{\out{<div class="r">}}\preformatted{abstract_downsampler$get_figure_data()}\if{html}{\out{</div>}}
 }
 
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-abstract_downsampler-get_orig_data"></a>}}
+\if{latex}{\out{\hypertarget{method-abstract_downsampler-get_orig_data}{}}}
+\subsection{Method \code{get_orig_data()}}{
+Returns the list of the original data and aggregators.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{abstract_downsampler$get_orig_data(uid = NULL)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{uid}}{Character, optional.
+If it is given, the data of the \code{uid} will be returned}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-abstract_downsampler-set_orig_data"></a>}}
+\if{latex}{\out{\hypertarget{method-abstract_downsampler-set_orig_data}{}}}
+\subsection{Method \code{set_orig_data()}}{
+Set the original data.
+If there is an existing data, replace with the new one.
+If not, add new data.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{abstract_downsampler$set_orig_data(
+  uid,
+  name = NULL,
+  data = NULL,
+  axis_type = NULL,
+  n_out = NULL,
+  aggregator = NULL
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{uid}}{Character.
+Unique id to identify the original data.}
+
+\item{\code{name}}{Character, optional.
+Name of the data that will be used as the trace legend.}
+
+\item{\code{data}}{Data frame, optional.
+Original data. \code{x} and \code{y} columns should be included.}
+
+\item{\code{axis_type}}{Character, optional.
+\code{linear} or \code{date}, depending on the \code{x} value.}
+
+\item{\code{n_out}}{Integer, optional.
+Number of samples that are displayed.}
+
+\item{\code{aggregator}}{An R6 class instance for aggregation.
+Select an aggregation function. The list of the functions are obtained
+using \code{list_aggregators}.}
+}
+\if{html}{\out{</div>}}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-abstract_downsampler-clone"></a>}}

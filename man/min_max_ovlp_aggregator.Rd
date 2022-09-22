@@ -3,13 +3,15 @@
 \docType{class}
 \name{min_max_ovlp_aggregator}
 \alias{min_max_ovlp_aggregator}
-\title{R6 Class for Min-Max Aggregation that has 50\% overlapping windows.}
+\title{Aggregation using local minimum and maximum values
+of which small data ranges have 50\% overlaps.}
 \format{
 An \code{R6::R6Class} object
 }
 \description{
 Divide the data into 50\% overlapping intervals
 and find the maximum and minimum values of each.
+\code{n_out} must be even number.
 }
 \examples{
 data(noise_fluct)

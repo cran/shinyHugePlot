@@ -8,7 +8,7 @@ d <- tibble::tibble(
 )
 
 test_that("Check regarding the abstract_aggregator", {
-  abs_agg <- abstract_aggregator$new()
+  abs_agg <- abstract_aggregator$new(interleave_gaps = TRUE)
   expect_is(abs_agg, c("abstract_aggregator","R6"))
 
   d_agg <- abs_agg$aggregate(d$x, d$y, n_out = 100)

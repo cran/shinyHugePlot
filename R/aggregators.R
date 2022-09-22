@@ -3,6 +3,7 @@
 #' @export
 #' @docType class
 #' @format An \code{R6::R6Class} object
+#' @importFrom purrr map map_int
 #' @description
 #' The LTTB method aggregates the huge samples using the areas
 #' of the triangles formed by the samples.
@@ -56,7 +57,7 @@ LTTB_aggregator <- R6::R6Class(
       # convert it to integer64 and normalized using `nt_y_ratio`
       if (inherits(x, "nanotime")) {
         result <- LTTB(
-          x = bit64::as.integer64(x - min(x)) / private$nt_y_ratio,
+          x = bit64::as.integer64(x - min(x, na.rm = TRUE)) / private$nt_y_ratio,
           y = dplyr::case_when(
             inherits(y, "character") ~ as.numeric(as.factor(y)),
             inherits(y, "factor")    ~ as.numeric(y),
@@ -97,7 +98,8 @@ LTTB_aggregator <- R6::R6Class(
 )
 
 
-#' R6 Class for Min-Max Aggregation that has 50\% overlapping windows.
+#' Aggregation using local minimum and maximum values
+#' of which small data ranges have 50\% overlaps.
 #'
 #' @export
 #' @docType class
@@ -105,6 +107,7 @@ LTTB_aggregator <- R6::R6Class(
 #' @description
 #' Divide the data into 50\% overlapping intervals
 #' and find the maximum and minimum values of each.
+#' \code{n_out} must be even number.
 #' @examples
 #' data(noise_fluct)
 #' agg <- min_max_ovlp_aggregator$new()
@@ -126,42 +129,49 @@ min_max_ovlp_aggregator <- R6::R6Class(
   ),
   private = list(
     aggregate_exec = function(x, y, n_out) {
-      # The block size 2x the bin size we also perform the ceiling
-      block_size <- floor(length(x) / (n_out - 1) * 2)
-      argmax_offset <- block_size %/% 2
 
-      # Calculate the offset range,
-      # which will be added to the argmin and argmax pos
-      offset <- seq(1, length(x) - block_size - argmax_offset, block_size)
+      n_minmax <- n_out / 2 - 1
+      # block_size * (n_minmax + 0.5) = data_num
+      block_size <- floor((length(x) - 2) / (n_minmax + 0.5))
 
-      # Calculate the argmin & argmax
+      y_mat_1 <- generate_matrix(
+        y[2:(length(x) - 1 - block_size %/% 2 )],
+        n_minmax, remove_first_last = FALSE
+      )
 
-      argmin <- y[2:(1 + block_size * length(offset))] %>%
-        matrix(nrow = block_size) %>%
-        apply(2, which.min) + offset
+      y_mat_1_values <- apply(y_mat_1, 1, function(x) sum(!is.na(x)))
 
-      argmax <- y[argmax_offset + 2:(1 + block_size * length(offset))] %>%
-        matrix(nrow = block_size) %>%
-        apply(2, which.max) + offset + argmax_offset
+      y_mat_2 <- generate_matrix(
+        y[(2 + block_size %/% 2):(length(x) - 1)],
+        n_minmax, remove_first_last = FALSE
+      )
 
+      y_mat_2_values <- apply(y_mat_2, 1, function(x) sum(!is.na(x)))
 
-      # Sort the argmin & argmax
-      # (where we append the first and last index item)
-      # and then slice the original series on these indexes.
-      idx <- sort(c(1, argmin, argmax, length(x)))
+      idx_min <- 1 +
+        purrr::map_int(1:n_minmax, ~which.min(y_mat_1[.x,])) +
+        c(0, cumsum(y_mat_1_values)[1:(n_minmax - 1)])
+
+      idx_max <- block_size %/% 2 +
+        purrr::map_int(1:n_minmax, ~which.max(y_mat_2[.x,])) +
+        c(0, cumsum(y_mat_2_values)[1:(n_minmax - 1)])
+
+      idx <- c(1, idx_min, idx_max, length(x)) %>% sort()
+
       return(list(x = x[idx], y = y[idx]))
     }
   )
 )
 
-#' R6 Class for Min-Max Aggregation with fully overlapping windows
+#' Aggregation using local minimum and maximum values.
 #'
 #' @export
 #' @docType class
 #' @format An \code{R6::R6Class} object
 #' @description
-#' Divide the data into fully overlapping intervals
+#' Divide the data into small data ranges
 #' and find the maximum and minimum values of each.
+#' \code{n_out} must be even number.
 #' @examples
 #' data(noise_fluct)
 #' agg <- min_max_aggregator$new()
@@ -183,32 +193,32 @@ min_max_aggregator <- R6::R6Class(
   ),
   private = list(
     aggregate_exec = function(x, y, n_out) {
+      n_minmax <- n_out / 2 - 1
 
-      block_size <- floor(length(x) / (n_out - 2) * 2)
+      y_mat <- generate_matrix(
+        y[2:(length(x) - 1)], n_minmax, remove_first_last = FALSE
+        )
+      y_mat_values <- apply(y_mat, 1, function(x) sum(!is.na(x)))
 
-      # Offset range which will be added to the argmin and argmax pos
-      offset <- seq(1, length(x) - block_size, block_size)
+      idx_min <- 1 +
+        purrr::map_int(1:n_minmax, ~which.min(y_mat[.x,])) +
+        c(0, cumsum(y_mat_values)[1:(n_minmax - 1)])
 
-      # Calculate the argmin & argmax
+      idx_max <- 1 +
+        purrr::map_int(1:n_minmax, ~which.max(y_mat[.x,])) +
+        c(0, cumsum(y_mat_values)[1:(n_minmax - 1)])
 
-      argmin <- y[2:(1 + block_size * length(offset))] %>%
-        matrix(nrow = block_size) %>%
-        apply(2, which.min) + offset
+      idx <- c(1, idx_min, idx_max, length(x)) %>% sort()
 
-      argmax <- y[2:(1 + block_size * length(offset))] %>%
-        matrix(nrow = block_size) %>%
-        apply(2, which.max) + offset
-
-      # Sort the argmin & argmax (where we append the first and last index item)
-      # and then slice the original series on these indexes.
-      idx <- sort(c(1, argmin, argmax, length(x)))
       return(list(x = x[idx], y = y[idx]))
+
     }
   )
 )
 
 
-#' R6 Class for Efficient LTTB aggregation
+#' Aggregation using local minimum and maximum values,
+#' and Largest Triangle Three Buckets (LTTB) method.
 #'
 #' @export
 #' @docType class
@@ -264,7 +274,7 @@ eLTTB_aggregator <- R6::R6Class(
 )
 
 
-#' R6 Class for Naive (but fast) aggregation which returns every Nth point.
+#' Aggregation which returns every Nth point.
 #'
 #' @export
 #' @docType class
@@ -298,66 +308,47 @@ nth_pnt_aggregator <- R6::R6Class(
 )
 
 
-#' R6 Class for aggregation which returns the custom statistical values
+#' NULL aggregator.
 #'
 #' @export
 #' @docType class
 #' @format An \code{R6::R6Class} object
 #' @description
-#' This aggregator divides the data into no-overlapping intervals
-#' and calculate specific statistical values such as the mean.
+#' It does not aggregate the data but returns the full samples within the range.
 #' @examples
 #' data(noise_fluct)
-#' agg <- custom_stat_aggregator$new(y_func = function(x) mean(x, na.rm = TRUE))
-#' d_agg <- agg$aggregate(noise_fluct$sec, noise_fluct$level, 1000)
-#' plot(d_agg$x, d_agg$y, type = "l")
-#'
-custom_stat_aggregator <- R6::R6Class(
-  "custom_stat_aggregator",
-  inherit = abstract_aggregator,
+#' agg <- null_aggregator$new()
+#' d_agg <- agg$aggregate(noise_fluct$sec, noise_fluct$level)
+#' plot(d_agg$x[1:100], d_agg$y[1:100], type = "l")
+null_aggregator <- R6::R6Class(
+  "null_aggregator",
   public = list(
     #' @description
-    #' Constructor of the Aggregator.
-    #' @param interleave_gaps,nan_position
-    #' Arguments pass to the constructor of
-    #' the \code{abstract_aggregator} class.
-    #' @param y_func Function.
-    #' Statistical values are calculated using this function.
-    #' By default, \code{mean}.
-    initialize = function(
-      y_func = function(x) mean(x, na.rm = TRUE),
-      interleave_gaps = FALSE, nan_position = "end"
-      ) {
-      private$y_func <- y_func
-      super$initialize(interleave_gaps, nan_position, accepted_datatype = NULL)
-    }
-  ),
-  private = list(
-    y_func = NULL,
-    aggregate_exec = function(x, y, n_out) {
-      x_agg <- apply(
-        generate_matrix(x, n_out, remove_first_last = FALSE),
-        1, mean, na.rm = TRUE
-      )
-      y_mat <- generate_matrix(y, n_out, remove_first_last = FALSE)
-
-      y_agg <- apply(y_mat, 1, private$y_func)
-
-      return(list(x = x_agg, y = y_agg))
+    #' Constructor that changes nothing.
+    initialize = function() {},
+    #' @description
+    #' Function where no aggregation will be executed.
+    #' @param x,y Vectors.
+    #' @param n_out Integer, omitted.
+    aggregate = function(x, y, n_out = -1){
+      return(list(x = x, y = y))
     }
   )
 )
 
 
 
-#' R6 Class for aggregation which returns the 3 types of the statistical values
+
+#' Aggregation which returns the ranges and nominal values
+#' within small data ranges
 #'
 #' @export
 #' @docType class
 #' @format An \code{R6::R6Class} object
 #' @description
 #' This aggregator divides the data into no-overlapping intervals
-#' and calculate specific statistical values such as the mean.
+#' and calculate specific statistics that represents the range and nominal
+#' values of the data, such as the max, min and mean.
 #' @examples
 #' data(noise_fluct)
 #' agg <- range_stat_aggregator$new(ylwr = min, y = mean, yupr = max)
@@ -367,7 +358,7 @@ custom_stat_aggregator <- R6::R6Class(
 #' plot(d_agg$x, d_agg$yupr, type = "l")
 #'
 range_stat_aggregator <- R6::R6Class(
-  "custom_stat_aggregator",
+  "range_stat_aggregator",
   inherit = abstract_aggregator,
   public = list(
     #' @description
@@ -378,16 +369,28 @@ range_stat_aggregator <- R6::R6Class(
     #' @param yupr,y,ylwr Functions.
     #' Statistical values are calculated using this function.
     #' By default, \code{max, mean, min}, respectively.
-    #' Note that the functions need to deal with NA values.
+    #' Note that the NA values are omitted automatically.
     initialize = function(
-      ylwr = function(x) min(x, na.rm = TRUE),
-      y = function(x) mean(x, na.rm = TRUE),
-      yupr = function(x) max(x, na.rm = TRUE),
+      ylwr = min,
+      y = mean,
+      yupr = max,
       interleave_gaps = FALSE, nan_position = "end"
     ) {
-      private$ylwr <- ylwr
-      private$y    <- y
-      private$yupr <- yupr
+      assertthat::assert_that(
+        all(
+          c(
+            inherits(ylwr, "function"),
+            (inherits(y, "function") || is.null(y)),
+            inherits(yupr, "function")
+          )
+        ),
+          msg = "ylwr and yupr must be functions / y must be a function or NULL"
+      )
+      private$ylwr <- function(x) ylwr(na.omit(x))
+      private$yupr <- function(x) yupr(na.omit(x))
+      if (!is.null(y)) {
+        private$y    <- function(x) y(na.omit(x))
+      }
       super$initialize(interleave_gaps, nan_position, accepted_datatype = NULL)
     }
   ),
@@ -398,15 +401,18 @@ range_stat_aggregator <- R6::R6Class(
 
     aggregate_exec = function(x, y, n_out) {
 
-      x_agg <- apply(
-        generate_matrix(x, n_out, remove_first_last = FALSE),
-        1, mean, na.rm = TRUE
-        )
+      x_mat <- generate_matrix(x, n_out, remove_first_last = FALSE)
+      x_agg <- apply(x_mat, 1, mean, na.rm = TRUE)
+
       y_mat <- generate_matrix(y, n_out, remove_first_last = FALSE)
 
-      y_agg <- apply(y_mat, 1, private$y)
       yupr_agg <- apply(y_mat, 1, private$yupr)
       ylwr_agg <- apply(y_mat, 1, private$ylwr)
+      if (!is.null(private$y)) {
+        y_agg    <- apply(y_mat, 1, private$y)
+      } else {
+        y_agg <- NA
+      }
 
       return(list(x = x_agg, ylwr = ylwr_agg, y = y_agg, yupr = yupr_agg))
     }
@@ -414,118 +420,7 @@ range_stat_aggregator <- R6::R6Class(
 )
 
 
-#' R6 Class for aggregation which returns the mean values
-#'
-#' @export
-#' @format An \code{R6::R6Class} object
-#' @description
-#' The mean value for each interval is calculated.
-mean_aggregator <- R6::R6Class(
-  "mean_aggregator",
-  inherit = custom_stat_aggregator,
-  public = list(
-    #' @description
-    #' Constructor of the Aggregator.
-    #' @param interleave_gaps,nan_position
-    #' Arguments pass to the constructor of
-    #' the \code{abstract_aggregator} class.
-    initialize = function(interleave_gaps = FALSE, nan_position = "end"
-    ) {
-      super$initialize(
-        y_func = function(x) mean(x, na.rm = TRUE),
-        interleave_gaps, nan_position
-        )
-    }
-  )
-)
-
-
-
-#' R6 Class for aggregation which returns the median values
-#'
-#' @export
-#' @docType class
-#' @format An \code{R6::R6Class} object
-#' @description
-#' The median value for each interval is calculated.
-median_aggregator <- R6::R6Class(
-  "mean_aggregator",
-  inherit = custom_stat_aggregator,
-  public = list(
-    #' @description
-    #' Constructor of the Aggregator.
-    #' @param interleave_gaps,nan_position
-    #' Arguments pass to the constructor of
-    #' the \code{abstract_aggregator} class.
-    initialize = function(
-      interleave_gaps = FALSE, nan_position = "end"
-    ) {
-      super$initialize(
-        y_func = function(x) median(x, na.rm = TRUE),
-        interleave_gaps, nan_position
-      )
-    }
-  )
-)
-
-
-#' R6 Class for aggregation which returns the max values
-#'
-#' @export
-#' @docType class
-#' @format An \code{R6::R6Class} object
-#' @description
-#' The maximum value for each interval is calculated.
-max_aggregator <- R6::R6Class(
-  "mean_aggregator",
-  inherit = custom_stat_aggregator,
-  public = list(
-    #' @description
-    #' Constructor of the Aggregator.
-    #' @param interleave_gaps,nan_position
-    #' Arguments pass to the constructor of
-    #' the \code{abstract_aggregator} class.
-    initialize = function(
-      interleave_gaps = FALSE, nan_position = "end"
-    ) {
-      super$initialize(
-        y_func = function(x) max(x, na.rm = TRUE),
-        interleave_gaps, nan_position
-      )
-    }
-  )
-)
-
-
-
-#' R6 Class for aggregation which returns the minimum values
-#'
-#' @export
-#' @docType class
-#' @format An \code{R6::R6Class} object
-#' @description
-#' The minimum value for each interval is calculated.
-min_aggregator <- R6::R6Class(
-  "mean_aggregator",
-  inherit = custom_stat_aggregator,
-  public = list(
-    #' @description
-    #' Constructor of the Aggregator.
-    #' @param interleave_gaps,nan_position
-    #' Arguments pass to the constructor of
-    #' the \code{abstract_aggregator} class.
-    initialize = function(
-    interleave_gaps = FALSE, nan_position = "end"
-    ) {
-      super$initialize(
-        y_func = function(x) min(x, na.rm = TRUE),
-        interleave_gaps, nan_position
-      )
-    }
-  )
-)
-
-#' R6 Class for Aggregation using a user-defined function.
+#' Aggregation using a user-defined function.
 #'
 #' @export
 #' @docType class
@@ -556,9 +451,10 @@ custom_func_aggregator <- R6::R6Class(
     aggregation_func = NULL,
     #' @description
     #' Constructor of the Aggregator.
-    #' @param aggregation_func
+    #' @param aggregation_func Function.
     #' User-defined function to aggregate data,
     #' of which arguments are \code{x}, \code{y} and \code{n_out}.
+
     #' @param interleave_gaps,nan_position,accepted_datatype
     #' Arguments pass to the constructor of
     #' the \code{abstract_aggregator} class.
@@ -573,6 +469,84 @@ custom_func_aggregator <- R6::R6Class(
   private = list(
     aggregate_exec = function(x, y, n_out) {
       return(self$aggregation_func(x, y, n_out))
+    }
+  )
+)
+
+
+
+#' Aggregation which returns arbitrary statistics
+#'
+#' @export
+#' @docType class
+#' @format An \code{R6::R6Class} object
+#' @description
+#' This aggregator divides the data into no-overlapping intervals
+#' and calculate specific statistical values such as the mean.
+#' @examples
+#' data(noise_fluct)
+#' agg <- custom_stat_aggregator$new(y_func = mean)
+#' d_agg <- agg$aggregate(noise_fluct$sec, noise_fluct$level, 1000)
+#' plot(d_agg$x, d_agg$y, type = "l")
+#'
+#' agg <- custom_stat_aggregator$new(y_func = max, x_mean = FALSE)
+#' d_agg <- agg$aggregate(noise_fluct$sec, noise_fluct$level, 1000)
+#' plot(d_agg$x, d_agg$y, type = "l")
+custom_stat_aggregator <- R6::R6Class(
+  "custom_stat_aggregator",
+  inherit = abstract_aggregator,
+  public = list(
+    #' @description
+    #' Constructor of the Aggregator.
+    #' @param interleave_gaps,nan_position
+    #' Arguments pass to the constructor of
+    #' the \code{abstract_aggregator} class.
+    #' @param y_func Function.
+    #' Statistical values are calculated using this function.
+    #' By default, \code{mean}.
+    #' @param x_mean Boolean.
+    #' Whether using the mean values or not for the x values.
+    #' If not, the x values that give the specific y values are used.
+    #' E.g., if you use \code{max} as the \code{aggregation_func} and
+    #' set this argument to \code{FALSE}, x values that give the maximum
+    #' y values are used.
+    #' By default, \code{TRUE}.
+    initialize = function(
+    y_func = mean,
+    x_mean = TRUE,
+    interleave_gaps = FALSE, nan_position = "end"
+    ) {
+      private$y_func <- function(x) y_func(na.omit(x))
+      private$x_mean <- x_mean
+      super$initialize(interleave_gaps, nan_position, accepted_datatype = NULL)
+
+    }
+  ),
+  private = list(
+    y_func = NULL,
+    x_mean = NULL,
+    aggregate_exec = function(x, y, n_out) {
+
+      y_mat <- generate_matrix(y, n_out, remove_first_last = FALSE)
+      y_agg <- apply(y_mat, 1, private$y_func)
+
+      x_mat <- generate_matrix(x, n_out, remove_first_last = FALSE)
+      if (private$x_mean) {
+        x_agg <- apply(x_mat, 1, mean, na.rm = TRUE)
+      } else {
+        x_idx <- purrr::map_int(
+          seq_along(y_agg),
+          ~if_else(
+            y_agg[.x] %in% y_mat[.x,],
+            which(y_mat[.x,] == y_agg[.x])[1],
+            NA_integer_
+            )
+        )
+        x_agg <- purrr::map(seq_along(y_agg), ~x_mat[.x, x_idx[.x]]) %>%
+          unlist()
+      }
+
+      return(list(x = x_agg, y = y_agg))
     }
   )
 )

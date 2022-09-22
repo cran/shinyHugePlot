@@ -4,10 +4,11 @@
 \alias{shiny_hugeplot}
 \alias{shiny_hugeplot.default}
 \alias{shiny_hugeplot.nanotime}
+\alias{shiny_hugeplot.POSIXct}
 \alias{shiny_hugeplot.matrix}
 \alias{shiny_hugeplot.data.frame}
 \alias{shiny_hugeplot.plotly}
-\title{Wrapper for plot huge data in shiny and plotly}
+\title{Wrapper for plotting large-sized data using shiny and plotly}
 \usage{
 shiny_hugeplot(obj, ...)
 
@@ -15,12 +16,14 @@ shiny_hugeplot(obj, ...)
   obj = NULL,
   y = NULL,
   n_out = 1000L,
-  aggregator = eLTTB_aggregator,
+  aggregator = min_max_aggregator$new(),
   run_shiny = TRUE,
   downsampler_options = list(),
-  plotly_options = list(type = "scatter", mode = "lines+markers"),
+  plotly_options = list(type = "scatter", mode = "lines"),
   plotly_layout_options = list(),
   shiny_options = list(),
+  width = "100\%",
+  height = "600px",
   ...
 )
 
@@ -29,24 +32,44 @@ shiny_hugeplot(obj, ...)
   y = NULL,
   tz = Sys.timezone(),
   n_out = 1000L,
-  aggregator = eLTTB_aggregator,
+  aggregator = min_max_aggregator$new(),
   run_shiny = TRUE,
   downsampler_options = list(),
-  plotly_options = list(type = "scatter", mode = "lines+markers"),
+  plotly_options = list(type = "scatter", mode = "lines"),
   plotly_layout_options = list(xaxis = list(type = "date")),
   shiny_options = list(),
+  width = "100\%",
+  height = "600px",
+  ...
+)
+
+\method{shiny_hugeplot}{POSIXct}(
+  obj = NULL,
+  y = NULL,
+  tz = Sys.timezone(),
+  n_out = 1000L,
+  aggregator = min_max_aggregator$new(),
+  run_shiny = TRUE,
+  downsampler_options = list(),
+  plotly_options = list(type = "scatter", mode = "lines"),
+  plotly_layout_options = list(xaxis = list(type = "date")),
+  shiny_options = list(),
+  width = "100\%",
+  height = "600px",
   ...
 )
 
 \method{shiny_hugeplot}{matrix}(
   obj = NULL,
   n_out = 1000L,
-  aggregator = eLTTB_aggregator,
+  aggregator = min_max_aggregator$new(),
   run_shiny = TRUE,
   downsampler_options = list(),
-  plotly_options = list(type = "scatter", mode = "lines+markers"),
+  plotly_options = list(type = "scatter", mode = "lines"),
   plotly_layout_options = list(),
   shiny_options = list(),
+  width = "100\%",
+  height = "600px",
   ...
 )
 
@@ -54,22 +77,26 @@ shiny_hugeplot(obj, ...)
   obj = NULL,
   tz = Sys.timezone(),
   n_out = 1000L,
-  aggregator = eLTTB_aggregator,
+  aggregator = min_max_aggregator$new(),
   run_shiny = TRUE,
   downsampler_options = list(),
-  plotly_options = list(type = "scatter", mode = "lines+markers"),
+  plotly_options = list(type = "scatter", mode = "lines"),
   plotly_layout_options = list(),
   shiny_options = list(),
+  width = "100\%",
+  height = "600px",
   ...
 )
 
 \method{shiny_hugeplot}{plotly}(
   obj,
   n_out = 1000L,
-  aggregator = eLTTB_aggregator,
+  aggregator = min_max_aggregator$new(),
   run_shiny = TRUE,
   downsampler_options = list(),
   shiny_options = list(),
+  width = "100\%",
+  height = "600px",
   ...
 )
 }
@@ -79,45 +106,40 @@ or plotly object.
 If a numeric vector is given, it is used as the y values of the figure.
 the x values are calculated by \code{seq_along(obj)}.
 If you use \code{y} argument together, this argument is interpreted as
-the x values.
+the x values of the figure.
 If a nanotime vector is given, it is used as the x values of the figure.
-You must also give \code{y} argument, used as the y values.
+You must also give \code{y} argument, which will be used as the y values.
 Regarding \code{nanotime}, see the \code{nanotime} package.
 If a numeric matrix is given, the first and second column values are used
-as the x and y values. The matrix must have more than 2 columns.
-If a data.frame is given, \code{d$x} and \code{d$y} are used as the
-x and y values. If the class of the \code{d$x} is \code{nanotime},
-the time-scale x axis is applied. The data.frame must have columns named
-x and y.
-If a plotly object is given, it will be displayed as the figure.}
+as the x and y values. (The matrix must have more than 2 columns.)
+If a data.frame is given, \code{x} and \code{y} columns are used as the
+x and y values. If the class of the \code{x} column is \code{nanotime},
+the date type will be applied to the x axis.
+The data.frame must have columns named x and y.
+If a plotly object is given, it will be displayed.}
 
 \item{...}{Not used.}
 
 \item{y}{Numeric vector, optional.
-The y values of the figure.}
+The y values of the figure.
+It is required if the \code{obj} argument is used as x values of the figure.}
 
 \item{n_out}{Integer, optional.
 Number of samples get by the down-sampling. By default, 1000.}
 
 \item{aggregator}{R6 class for the aggregation, optional.
-Select one out of
-\code{LTTB_aggregator}, \code{min_max_ovlp_aggregator},
-\code{min_max_aggregator}, \code{eLTTB_aggregator},
-\code{nth_pnt_aggregator}, \code{custom_stat_aggregator},
-\code{mean_aggregator}, \code{median_aggregator},
-\code{min_aggregator}, \code{max_aggregator},
-or \code{custom_func_aggregator}.
-By default \code{eLTTB_aggregator}.}
+Select an aggregation function. The list of the functions are obtained
+using \code{list_aggregators}.
+By default, \code{min_max_aggregator$new()}.}
 
 \item{run_shiny}{Boolean, optional.
 whether a generated shiny app will be run immediately.
 By default, \code{TRUE}.}
 
 \item{downsampler_options}{Named list, optional.
-Arguments passed to \code{shiny_downsampler$new} or the constructor of
-the specific aggregator.
-To set \code{aggregator} and \code{n_shown_samples},
-use \code{aggregator} and \code{n_out} arguments.}
+Arguments passed to \code{shiny_downsampler$new}, other than
+\code{aggregator} and \code{n_shown_samples}.
+To set these arguments, use \code{aggregator} and \code{n_out} arguments.}
 
 \item{plotly_options}{Named list, optional.
 Arguments passed to \code{plotly::plot_ly}.}
@@ -128,16 +150,21 @@ Arguments passed to \code{plotly::layout}.}
 \item{shiny_options}{Named list, optional.
 Arguments passed to \code{shinyApp} function.}
 
+\item{width, height}{Character, optional.
+Arguments passed to \code{plotlyOutput}.
+By default, \code{100\%} and \code{600px}.}
+
 \item{tz}{Timezone, optional.
 It is used to convert the nanotime to the time displayed in the figure.
+It is used if the class of the \code{obj} argument is nanotime.
 By default, \code{Sys.timezone()}.}
 }
 \description{
-This function is an easy wrapper to plot the huge data.
-It employs an R6 \code{shiny_downsampler} instance to obtain samples
-from data using a specified aggregation method.
+This S3 class function is a wrapper to plot the large-sized data.
+It employs an R6 \code{shiny_downsampler} instance to obtain data samples
+using a specified aggregation method that is defined in the instance.
 The figure will be updated interactively according to the x-range
-that user can define manually in the shiny app.
+that user select manually in the shiny app.
 }
 \examples{
 \donttest{

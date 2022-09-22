@@ -3,7 +3,7 @@
 \docType{class}
 \name{custom_func_aggregator}
 \alias{custom_func_aggregator}
-\title{R6 Class for Aggregation using a user-defined function.}
+\title{Aggregation using a user-defined function.}
 \format{
 An \code{R6::R6Class} object
 }
@@ -67,7 +67,8 @@ Constructor of the Aggregator.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{aggregation_func}}{User-defined function to aggregate data,
+\item{\code{aggregation_func}}{Function.
+User-defined function to aggregate data,
 of which arguments are \code{x}, \code{y} and \code{n_out}.}
 
 \item{\code{interleave_gaps, nan_position, accepted_datatype}}{Arguments pass to the constructor of

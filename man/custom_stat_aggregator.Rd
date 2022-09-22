@@ -3,7 +3,7 @@
 \docType{class}
 \name{custom_stat_aggregator}
 \alias{custom_stat_aggregator}
-\title{R6 Class for aggregation which returns the custom statistical values}
+\title{Aggregation which returns arbitrary statistics}
 \format{
 An \code{R6::R6Class} object
 }
@@ -13,10 +13,13 @@ and calculate specific statistical values such as the mean.
 }
 \examples{
 data(noise_fluct)
-agg <- custom_stat_aggregator$new(y_func = function(x) mean(x, na.rm = TRUE))
+agg <- custom_stat_aggregator$new(y_func = mean)
 d_agg <- agg$aggregate(noise_fluct$sec, noise_fluct$level, 1000)
 plot(d_agg$x, d_agg$y, type = "l")
 
+agg <- custom_stat_aggregator$new(y_func = max, x_mean = FALSE)
+d_agg <- agg$aggregate(noise_fluct$sec, noise_fluct$level, 1000)
+plot(d_agg$x, d_agg$y, type = "l")
 }
 \section{Super class}{
 \code{\link[shinyHugePlot:abstract_aggregator]{shinyHugePlot::abstract_aggregator}} -> \code{custom_stat_aggregator}
@@ -42,7 +45,8 @@ plot(d_agg$x, d_agg$y, type = "l")
 Constructor of the Aggregator.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{custom_stat_aggregator$new(
-  y_func = function(x) mean(x, na.rm = TRUE),
+  y_func = mean,
+  x_mean = TRUE,
   interleave_gaps = FALSE,
   nan_position = "end"
 )}\if{html}{\out{</div>}}
@@ -54,6 +58,14 @@ Constructor of the Aggregator.
 \item{\code{y_func}}{Function.
 Statistical values are calculated using this function.
 By default, \code{mean}.}
+
+\item{\code{x_mean}}{Boolean.
+Whether using the mean values or not for the x values.
+If not, the x values that give the specific y values are used.
+E.g., if you use \code{max} as the \code{aggregation_func} and
+set this argument to \code{FALSE}, x values that give the maximum
+y values are used.
+By default, \code{TRUE}.}
 
 \item{\code{interleave_gaps, nan_position}}{Arguments pass to the constructor of
 the \code{abstract_aggregator} class.}

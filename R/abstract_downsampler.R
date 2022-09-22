@@ -1,4 +1,4 @@
-#' R6 class of abstract down-sampler
+#' R6 abstract class for down-sampling
 #'
 #' @export
 #' @docType class
@@ -39,14 +39,9 @@ abstract_downsampler <- R6::R6Class(
     #' @param n_out Integer or numeric.
     #' The number of samples shown after down-sampling. By default 1000.
     #' @param aggregator An instance of an R6 class for aggregation.
-    #' Select one out of
-    #' \code{LTTB_aggregator}, \code{min_max_ovlp_aggregator},
-    #' \code{min_max_aggregator}, \code{eLTTB_aggregator},
-    #' \code{nth_pnt_aggregator}, \code{custom_stat_aggregator},
-    #' \code{mean_aggregator}, \code{median_aggregator},
-    #' \code{min_aggregator}, \code{max_aggregator},
-    #' or \code{custom_func_aggregator}.
-    #' By default \code{eLTTB_aggregator}.
+    #' Select an aggregation function. The list of the functions are obtained
+    #' using \code{list_aggregators}.
+    #' By default, \code{eLTTB_aggregator$new()}.
     #' @param legend_options Named list, optional.
     #' Names of the elements are \code{prefix_downsample},
     #' \code{suffix_downsample}, \code{is_aggsize_shown}, \code{agg_prefix},
@@ -117,9 +112,12 @@ abstract_downsampler <- R6::R6Class(
       }
 
       # count the number of traces and prepare the data
-      if (!is.null(figure$x$subplot) && figure$x$subplot) {
+      if (
+        (!is.null(figure$x$subplot) && figure$x$subplot) ||
+        !is.null(figure$x$data)
+      ){
         figure <- plotly::subplot(figure) # necessary to reset the axes
-        n_series <- length(figure$x$attrs)
+        n_series <- length(figure$x$data)
         plot_data <- figure$x$data
 
       } else {
@@ -128,7 +126,6 @@ abstract_downsampler <- R6::R6Class(
         if (is.null(figure$x$attrs[[1]][["type"]]) &&
             length(figure$x$attrs) > 1) {
           figure$x$attrs[[1]] <- NULL
-          blank_data <- figure$x$attrs[[1]]
         }
 
         # extract attrs to be evaluated
@@ -138,38 +135,69 @@ abstract_downsampler <- R6::R6Class(
 
         n_series <- length(attrs_to_eval)
 
+        if (is.null(figure$x$attrs[[1]][["type"]]) &&
+            length(figure$x$attrs) == 1) {
+          n_series <- 0
+        }
+
         # get the data to be plotted
         if (n_series > 0) {
           plot_data <- purrr::imap(
             attrs_to_eval,
-            function(x, y) {
-              d <- plotly::plotly_data(figure, y)
-              purrr::map(
-                x,
-                function(x) {
-                  if (lazyeval::is_formula(x)) {
-                    ex <- lazyeval::f_eval(x, d)
+            function(attrs, trace_uid) {
+              d <- plotly::plotly_data(figure, trace_uid)
+              trace <- purrr::map(
+                attrs,
+                function(elm) {
+                  if (lazyeval::is_formula(elm)) {
+                    elm_eval <- lazyeval::f_eval(elm, d)
                   } else {
-                    ex <- x
+                    elm_eval <- elm
                   }
-                  return(ex)
+                  return(elm_eval)
                 }
               )
+
+              # divide the trace, if it contains multiple data
+              tn <- trace$name
+              if (!is.null(tn) && length(tn) > 1) {
+
+                trace <- purrr::imap(
+                  trace,
+                  function(elm, elm_name) {
+                    if (elm_name == "name") {
+                      elm <- as.list(unique(tn))
+                    } else if (length(elm) == length(tn)) {
+                      elm <- split(elm, tn)
+                    } else {
+                      elm <- rep(list(elm), length(unique(tn)))
+                    }
+                  }
+                ) %>%
+                  purrr::transpose() %>%
+                  setNames(paste0(trace_uid, seq(1, length(.))))
+
+              } else {
+                # else, put the trace data in the list
+                trace <- list(trace) %>%
+                  setNames(trace_uid)
+              }
+
+              return(trace)
             }
-          )
+          ) %>%
+            setNames(NULL) %>%
+            unlist(recursive = FALSE)
+
+          n_series <- length(plot_data)
+
         }
 
       }
 
-      assertthat::assert_that(
-        n_series > 0,
-        msg = "No traces are found in the plotly figure"
-        )
-
       self$figure <- figure
-
       # initial downsampling
-      if (is_downsample) {
+      if (is_downsample && n_series > 0) {
 
         self$figure$x$attrs <- NULL
         self$figure$x$data <- NULL
@@ -214,9 +242,10 @@ abstract_downsampler <- R6::R6Class(
       # get attributes as trace object
       trace <- list(...)
 
-      # add trace name and unique id, if it is not defined
+      ### set unique id ###
       trace$uid <- basename(tempfile(pattern = ""))
-      # add name if it does not exist
+
+      ### set name ###
       if (is.null(trace$name)) {
         existing_id_max <- purrr::map_chr(private$orig_datalist, ~.x$name) %>%
           str_subset("^trace\\s[0-9]+$") %>%
@@ -226,14 +255,8 @@ abstract_downsampler <- R6::R6Class(
         trace$name <- paste("trace", existing_id_max + 1)
       }
 
-      # stop if there are no y values
-      if (is.null(trace[["y"]]) && is.null(hf_y)) {
-        message(paste(trace$name, "does not have y values"))
-        return()
-      }
-
       # register original data
-      private$set_orig_datalist(
+      private$trace_to_orig_data(
         trace = trace,
         hf_x = hf_x, hf_y = hf_y,
         hf_text = hf_text, hf_hovertext = hf_hovertext,
@@ -258,20 +281,9 @@ abstract_downsampler <- R6::R6Class(
 
       }
 
-      # plotly is not compatible with 64-bit nanotime,
-      # the datatime is converted to the text compatible with
-      # the plotly requirements
-      # only the UTC timezone is applicable
-
-      if (inherits(trace$x, "nanotime")) {
-        trace$x <- nanotime_to_plotlytime(trace$x, private$tz)
-        axis_type <- "date"
-      } else {
-        axis_type <- "linear"
-      }
-
+      # range plot, if it is computed
       if (!is.null(trace[["ylwr"]]) && !is.null(trace[["yupr"]])) {
-        range_trace <- private$get_range_trace(trace)
+        range_trace <- private$cmpt_range_trace(trace)
 
         trace[["ylwr"]] <- NULL
         trace[["yupr"]] <- NULL
@@ -288,7 +300,8 @@ abstract_downsampler <- R6::R6Class(
       }
 
       fig <- do.call(plotly::add_trace, c(p = list(self$figure), trace)) %>%
-        plotly::subplot()
+        plotly::subplot() %>%
+        suppressWarnings()
 
       fig$x$attrs <- NULL # necessary to avoid wrond dataset
 
@@ -296,7 +309,7 @@ abstract_downsampler <- R6::R6Class(
         stringr::str_replace("^xx", "x") %>%
         stringr::str_replace("^x", "xaxis")
 
-      if (axis_type == "date") {
+      if (inherits(trace$x, "nanotime")) {
         fig$x$layout[[xaxis_name]]$type <- "date"
       }
 
@@ -314,6 +327,57 @@ abstract_downsampler <- R6::R6Class(
     #' Returns the list of the data used for the plotly figure.
     get_figure_data = function() {
       return(self$figure$x$data)
+    },
+
+    #' @description
+    #' Returns the list of the original data and aggregators.
+    #' @param uid Character, optional.
+    #' If it is given, the data of the \code{uid} will be returned
+    get_orig_data = function(uid = NULL) {
+      if (!is.null(uid)) return(private$orig_datalist[[uid]])
+      return(private$orig_datalist)
+    },
+
+    #' @description
+    #' Set the original data.
+    #' If there is an existing data, replace with the new one.
+    #' If not, add new data.
+    #' @param uid Character.
+    #' Unique id to identify the original data.
+    #' @param name Character, optional.
+    #' Name of the data that will be used as the trace legend.
+    #' @param data Data frame, optional.
+    #' Original data. \code{x} and \code{y} columns should be included.
+    #' @param axis_type Character, optional.
+    #' \code{linear} or \code{date}, depending on the \code{x} value.
+    #' @param n_out Integer, optional.
+    #' Number of samples that are displayed.
+    #' @param aggregator An R6 class instance for aggregation.
+    #' Select an aggregation function. The list of the functions are obtained
+    #' using \code{list_aggregators}.
+    set_orig_data = function(
+      uid, name = NULL, data = NULL,
+      axis_type = NULL, n_out = NULL, aggregator = NULL) {
+
+      replace_null_x <- function(x = NULL, y = NULL) {
+        if (is.null(x) && !is.null(y)) return(y)
+        return(x)
+      }
+
+      data_exist <- private$orig_datalist[[uid]]
+      data_tmp <- list(name = name, data = data, axis_type = axis_type,
+                       n_out = n_out, aggregator = aggregator)
+
+      for (elem in c("name", "data", "axis_type", "n_out", "aggregator")) {
+        if (is.null(data_tmp[[elem]])) data_tmp[[elem]] <- data_exist[[elem]]
+        assertthat::assert_that(
+          !is.null(data_tmp[[elem]]),
+          msg = paste(elem, "of the original data is not given.")
+        )
+      }
+
+      private$orig_datalist[[uid]] <- data_tmp
+
     }
   ), # end of the public member
 
@@ -338,18 +402,12 @@ abstract_downsampler <- R6::R6Class(
     # @field tz Time zone employed to show time-series data
     tz = Sys.timezone(),
 
-    # the functions below are set using set method
-    # construct_update_data
-    # update_fig_env
-    # aggregate_trace
-
     # set orig_datalist ----------------------------------------------------
 
-
-    set_orig_datalist = function(trace, hf_x = NULL, hf_y = NULL,
-             hf_text = NULL, hf_hovertext = NULL,
-             tz = Sys.timezone(),
-             n_out, aggregator) {
+    trace_to_orig_data = function(
+      trace, hf_x = NULL, hf_y = NULL, hf_text = NULL, hf_hovertext = NULL,
+      tz = Sys.timezone(), n_out, aggregator
+      ) {
       # load x, y, text and hovertext --------------------------------------
 
       # high-frequency values
@@ -415,20 +473,12 @@ abstract_downsampler <- R6::R6Class(
       )
       hf_d <- hf_d[!is.na(hf_d$y), ]
 
-      n_samples <- nrow(hf_d)
-
       axis_type <- if (inherits(hf_d$x, "nanotime")) "date" else "linear"
 
       # register orig_datalist
-      private$orig_datalist <- c(
-        private$orig_datalist,
-        list(list(
-          name = trace$name,
-          n_out = n_out,
-          data = hf_d,
-          axis_type = axis_type,
-          aggregator =  aggregator
-        )) %>% setNames(trace$uid)
+      self$set_orig_data(
+        uid = trace$uid, name = trace$name, data = hf_d,
+        axis_type = axis_type, n_out = n_out, aggregator = aggregator
       )
     },
 
@@ -436,9 +486,9 @@ abstract_downsampler <- R6::R6Class(
   #
   # It takes the \code{relayout_order} from the front-end figure
   # and returns the updated data of the traces.
-  construct_update_data = function(relayout_order = list()) {
+  construct_update_data = function(relayout_order = list(), enforce = FALSE) {
 
-    if (is.null(relayout_order[[1]])) return()
+    if (is.null(relayout_order[[1]]) && !enforce) return()
 
     message(paste(
       paste(
@@ -451,20 +501,31 @@ abstract_downsampler <- R6::R6Class(
       )
     ))
 
-    if (!any(stringr::str_detect(names(relayout_order), "xaxis"))) return()
-
     df_xaxes <-  tibble(
-      trace_idx = seq_along(self$figure$x$data) - 1,
-      trace_uid = purrr::map_chr(self$figure$x$data, ~.x$uid),
+      trace_idx = seq_along(self$get_figure_data()) - 1,
+      trace_uid = purrr::map_chr(self$get_figure_data(), ~.x$uid),
+      aggregator = purrr::map_chr(trace_uid, ~class(self$get_orig_data(.x)$aggregator)[1]),
       xaxis = purrr::map_chr(
-        self$figure$x$data,
+        self$get_figure_data(),
         ~if (!is.null(.x$xaxis)) {.x$xaxis} else {"x"}
       ) %>%
         stringr::str_replace("^x", "xaxis")
-    )
+    ) %>%
+      dplyr::distinct(trace_uid, .keep_all = TRUE)
 
+    if (!any(stringr::str_detect(names(relayout_order), "xaxis"))) {
+      if (enforce) {
+        xax <- purrr::map(
+          unique(df_xaxes$xaxis),
+          ~paste0(.x, c(".autorange", ".showspikes"))
+        ) %>% unlist()
+        relayout_order <- as.list(rep(TRUE, length(xax))) %>% setNames(xax)
+      } else {
+        return()
+      }
+    }
 
-    traces_relayout_order <- tibble::tibble(
+    trace_update <- tibble::tibble(
       value = relayout_order,
       xaxis = str_extract(names(relayout_order), "^xaxis[0-9]*"),
       type  = str_remove(names(relayout_order), "^xaxis[0-9]*\\.") %>%
@@ -480,26 +541,22 @@ abstract_downsampler <- R6::R6Class(
       suppressMessages() %>%
       dplyr::filter(
         (!is.na(start) & !is.na(stop)) |
-          (!is.na(autorange) && !is.na(showspikes))
+          (!is.na(autorange) & !is.na(showspikes))
       ) %>%
       dplyr::select(xaxis, start, stop) %>%
       dplyr::left_join(df_xaxes, by = "xaxis") %>%
-      tidyr::nest(trace_idx = trace_idx) %>%
-      dplyr::mutate(trace_idx = purrr::map(trace_idx, ~.x$trace_idx))
-
-    traces_output <- traces_relayout_order %>%
-      tidyr::nest(args = -trace_idx) %>%
       dplyr::mutate(
-        trace = purrr::map2(
-          args, trace_idx,
-          ~private$aggregate_trace(
-            trace = list(index = .y, uid = .x$trace_uid),
-            start = .x$start, end = .x$stop
+        trace = purrr::pmap(
+          ., function(trace_idx, trace_uid, start, stop, xaxis, aggregator) {
+            private$aggregate_trace(
+              trace = list(index = trace_idx, uid = trace_uid),
+              start = start, end = stop
             )
+          }
         )
       )
 
-    return(traces_output)
+    return(trace_update)
 
   },
 
@@ -565,7 +622,11 @@ abstract_downsampler <- R6::R6Class(
 
 
     # Add the mean aggregation bin size to the trace name
-    if (nrow(orig_datatable) > orig_datalist$n_out &&
+    if (class(orig_datalist$aggregator)[1] == "null_aggregator") {
+      message("Down-sampling is not applied
+              because null aggregator is selected")
+      name <- orig_datalist$name
+    } else if (nrow(orig_datatable) > orig_datalist$n_out &&
         private$legend_options$is_aggsize_shown) {
 
       name <- paste0(
@@ -608,7 +669,7 @@ abstract_downsampler <- R6::R6Class(
     return(trace)
   },
 
-  get_range_trace = function(trace) {
+  cmpt_range_trace = function(trace) {
     range_trace <- trace
 
     range_trace[["x"]] <- c(trace[["x"]], rev(trace[["x"]]))

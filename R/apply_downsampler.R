@@ -1,7 +1,7 @@
-#' Wrapper for applying down-sampling
+#' Wrapper for applying down-sampling using aggregation function
 #'
 #' @description
-#' This function is a wrapper that employs an aggregator.
+#' This function is a wrapper that employs an aggregation function.
 #' @param obj Numeric vector or data.frame.
 #' If a numeric vector is given, a specific down-sampling method will be
 #' employed and a down-sampled vector will be returned.
@@ -11,14 +11,9 @@
 #' @param n_out Integer, optional.
 #' Number of samples get by the down-sampling. By default, 1000.
 #' @param aggregator R6 class for the aggregation, optional.
-#' Select one out of
-#' \code{LTTB_aggregator}, \code{min_max_ovlp_aggregator},
-#' \code{min_max_aggregator}, \code{eLTTB_aggregator},
-#' \code{nth_pnt_aggregator}, \code{custom_stat_aggregator},
-#' \code{mean_aggregator}, \code{median_aggregator},
-#' \code{min_aggregator}, \code{max_aggregator},
-#' or \code{custom_func_aggregator}.
-#' By default \code{eLTTB_aggregator}.
+#' Select an aggregation function. The list of the functions are obtained
+#' using \code{list_aggregators}.
+#' By default, \code{eLTTB_aggregator}.
 #' @param ... Not used.
 #' @export
 #' @examples

@@ -3,7 +3,7 @@
 \docType{class}
 \name{nth_pnt_aggregator}
 \alias{nth_pnt_aggregator}
-\title{R6 Class for Naive (but fast) aggregation which returns every Nth point.}
+\title{Aggregation which returns every Nth point.}
 \format{
 An \code{R6::R6Class} object
 }

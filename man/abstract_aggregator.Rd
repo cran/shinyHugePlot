@@ -3,7 +3,7 @@
 \docType{class}
 \name{abstract_aggregator}
 \alias{abstract_aggregator}
-\title{R6 super class for the aggregation}
+\title{R6 abstract class for the aggregation}
 \format{
 An \code{R6::R6Class} object
 }

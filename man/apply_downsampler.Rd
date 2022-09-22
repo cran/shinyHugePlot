@@ -4,7 +4,7 @@
 \alias{apply_downsampler}
 \alias{apply_downsampler.numeric}
 \alias{apply_downsampler.data.frame}
-\title{Wrapper for applying down-sampling}
+\title{Wrapper for applying down-sampling using aggregation function}
 \usage{
 apply_downsampler(obj, ...)
 
@@ -26,17 +26,12 @@ will be returned.}
 Number of samples get by the down-sampling. By default, 1000.}
 
 \item{aggregator}{R6 class for the aggregation, optional.
-Select one out of
-\code{LTTB_aggregator}, \code{min_max_ovlp_aggregator},
-\code{min_max_aggregator}, \code{eLTTB_aggregator},
-\code{nth_pnt_aggregator}, \code{custom_stat_aggregator},
-\code{mean_aggregator}, \code{median_aggregator},
-\code{min_aggregator}, \code{max_aggregator},
-or \code{custom_func_aggregator}.
-By default \code{eLTTB_aggregator}.}
+Select an aggregation function. The list of the functions are obtained
+using \code{list_aggregators}.
+By default, \code{eLTTB_aggregator}.}
 }
 \description{
-This function is a wrapper that employs an aggregator.
+This function is a wrapper that employs an aggregation function.
 }
 \examples{
 data(noise_fluct)

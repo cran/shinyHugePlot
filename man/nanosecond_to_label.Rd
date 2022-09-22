@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils.R
 \name{nanosecond_to_label}
 \alias{nanosecond_to_label}
-\title{Generate an appropriate time-based label using nanotime value}
+\title{Generate an time-based aggregation label using nanotime interval}
 \usage{
 nanosecond_to_label(ns)
 }
@@ -13,6 +13,7 @@ nanosecond_to_label(ns)
 Character.
 }
 \description{
-Nano-second time is converted to an appropriate label.
+Nano-second time is converted to an appropriate aggregation label,
+which is used for the legend of the aggregated series.
 e.g., 1e9 nano seconds will be converted to \code{"1.0s"}
 }

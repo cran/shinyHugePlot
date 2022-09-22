@@ -3,7 +3,8 @@
 \docType{class}
 \name{eLTTB_aggregator}
 \alias{eLTTB_aggregator}
-\title{R6 Class for Efficient LTTB aggregation}
+\title{Aggregation using local minimum and maximum values,
+and Largest Triangle Three Buckets (LTTB) method.}
 \format{
 An \code{R6::R6Class} object
 }

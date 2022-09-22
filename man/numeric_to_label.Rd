@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils.R
 \name{numeric_to_label}
 \alias{numeric_to_label}
-\title{Generate an appropriate label}
+\title{Generate an aggregation label using data interval}
 \usage{
 numeric_to_label(x)
 }
@@ -13,6 +13,7 @@ numeric_to_label(x)
 Character.
 }
 \description{
-Numeric value is converted to an appropriate label.
+Numeric value is converted to an appropriate aggregation label,
+which is used for the legend of the aggregated series.
 e.g., 1e9 will be converted to \code{"1.0G"}
 }

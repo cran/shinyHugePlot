@@ -1,4 +1,4 @@
-#' R6 super class for the aggregation
+#' R6 abstract class for the aggregation
 #'
 #' @export
 #' @docType class

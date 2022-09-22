@@ -10,7 +10,11 @@
 #' @description
 #' Plotly does not accept 64-bit nanotime format,
 #' so the conversion is necessary to import the time to plotly.
-#'
+# @examples
+# nanotime_to_plotlytime(
+#   nanotime::nanotime(as.POSIXct("2021-04-01 12:00:00", tz = "Asia/Tokyo")),
+#   tz = "Asia/Tokyo"
+# )
 nanotime_to_plotlytime <- function(time, tz) {
   assertthat::assert_that(
     inherits(time, "nanotime"),
@@ -35,20 +39,26 @@ nanotime_to_plotlytime <- function(time, tz) {
 #' @return nanotime
 #' @description
 #' Datetime obtained from plotly are converted to 64-bit nanotime format.
-#'
+# @examples
+# plotlytime_to_nanotime(
+#   "2021-04-01 12:00:00.123456",
+#   tz = "Asia/Tokyo"
+# )
 plotlytime_to_nanotime <- function(time, tz) {
   nanotime::as.nanotime(time, tz = tz)
 }
 
-#' Generate an appropriate time-based label using nanotime value
+#' Generate an time-based aggregation label using nanotime interval
 #'
 #' @description
-#' Nano-second time is converted to an appropriate label.
+#' Nano-second time is converted to an appropriate aggregation label,
+#' which is used for the legend of the aggregated series.
 #' e.g., 1e9 nano seconds will be converted to \code{"1.0s"}
 #' @importFrom dplyr case_when
 #' @param ns Numeric value(s) representing nano second.
 #' @return Character.
-#'
+# @examples
+# nanosecond_to_label(20 * 1e9)
 nanosecond_to_label <- function(ns) {
   thr     <- 0.1
   us_unit <- 1e3
@@ -77,15 +87,17 @@ nanosecond_to_label <- function(ns) {
 }
 
 
-#' Generate an appropriate label
+#' Generate an aggregation label using data interval
 #'
 #' @description
-#' Numeric value is converted to an appropriate label.
+#' Numeric value is converted to an appropriate aggregation label,
+#' which is used for the legend of the aggregated series.
 #' e.g., 1e9 will be converted to \code{"1.0G"}
 #' @importFrom dplyr case_when
 #' @param x Numeric value(s).
 #' @return Character.
-#'
+# @examples
+# numeric_to_label(40 * 1e6)
 numeric_to_label <- function(x) {
   thr <- 0.1
   e3_unit <- 1e3
@@ -104,6 +116,16 @@ numeric_to_label <- function(x) {
 }
 
 
+#' Generate a matrix using data and n_out
+#' @description
+#' This is used in the aggregation functions and not be exported.
+#' @param x Numeric value.
+#' The values that the user wants to aggregate.
+#' @param n_out Integer.
+#' The number of samples that the user wants to output.
+#' @param remove_first_last Boolean.
+#' Whether the first and last values are included in obtaining the samples
+#' or raw values are used.
 generate_matrix <- function(x, n_out, remove_first_last = TRUE) {
 
   if (remove_first_last) {
@@ -127,4 +149,20 @@ generate_matrix <- function(x, n_out, remove_first_last = TRUE) {
   if (remove_first_last) idx <- idx + 1
 
   return(matrix(x[idx], nrow = n_out, byrow = TRUE))
+}
+
+
+
+#' Show the aggregation functions
+#'
+#' @description
+#' It displays all the aggregators registered in the package.
+#' No arguments are necessary.
+#' @export
+#' @examples
+#' list_aggregators()
+list_aggregators <- function(){
+  ls("package:shinyHugePlot") %>%
+    stringr::str_subset("_aggregator$") %>%
+    setdiff("abstract_aggregator")
 }

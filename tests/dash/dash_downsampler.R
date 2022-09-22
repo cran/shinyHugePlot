@@ -140,7 +140,7 @@ dash_downsampler <- R6::R6Class(
         null_fig$x$data <- NULL
 
         dash_components <- purrr::map(
-          self$figure$x$data,
+          self$get_figure_data(),
           ~ do.call(
             plotly::add_trace, # private add_trace with downsampling
             c(list(p = null_fig), .x)
