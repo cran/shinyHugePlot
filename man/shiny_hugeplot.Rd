@@ -3,8 +3,6 @@
 \name{shiny_hugeplot}
 \alias{shiny_hugeplot}
 \alias{shiny_hugeplot.default}
-\alias{shiny_hugeplot.nanotime}
-\alias{shiny_hugeplot.POSIXct}
 \alias{shiny_hugeplot.matrix}
 \alias{shiny_hugeplot.data.frame}
 \alias{shiny_hugeplot.plotly}
@@ -15,44 +13,13 @@ shiny_hugeplot(obj, ...)
 \method{shiny_hugeplot}{default}(
   obj = NULL,
   y = NULL,
+  tz = Sys.timezone(),
   n_out = 1000L,
   aggregator = min_max_aggregator$new(),
   run_shiny = TRUE,
   downsampler_options = list(),
   plotly_options = list(type = "scatter", mode = "lines"),
   plotly_layout_options = list(),
-  shiny_options = list(),
-  width = "100\%",
-  height = "600px",
-  ...
-)
-
-\method{shiny_hugeplot}{nanotime}(
-  obj = NULL,
-  y = NULL,
-  tz = Sys.timezone(),
-  n_out = 1000L,
-  aggregator = min_max_aggregator$new(),
-  run_shiny = TRUE,
-  downsampler_options = list(),
-  plotly_options = list(type = "scatter", mode = "lines"),
-  plotly_layout_options = list(xaxis = list(type = "date")),
-  shiny_options = list(),
-  width = "100\%",
-  height = "600px",
-  ...
-)
-
-\method{shiny_hugeplot}{POSIXct}(
-  obj = NULL,
-  y = NULL,
-  tz = Sys.timezone(),
-  n_out = 1000L,
-  aggregator = min_max_aggregator$new(),
-  run_shiny = TRUE,
-  downsampler_options = list(),
-  plotly_options = list(type = "scatter", mode = "lines"),
-  plotly_layout_options = list(xaxis = list(type = "date")),
   shiny_options = list(),
   width = "100\%",
   height = "600px",
@@ -124,6 +91,11 @@ If a plotly object is given, it will be displayed.}
 The y values of the figure.
 It is required if the \code{obj} argument is used as x values of the figure.}
 
+\item{tz}{Timezone, optional.
+It is used to convert the nanotime to the time displayed in the figure.
+It is used if the class of the \code{obj} argument is nanotime.
+By default, \code{Sys.timezone()}.}
+
 \item{n_out}{Integer, optional.
 Number of samples get by the down-sampling. By default, 1000.}
 
@@ -153,11 +125,6 @@ Arguments passed to \code{shinyApp} function.}
 \item{width, height}{Character, optional.
 Arguments passed to \code{plotlyOutput}.
 By default, \code{100\%} and \code{600px}.}
-
-\item{tz}{Timezone, optional.
-It is used to convert the nanotime to the time displayed in the figure.
-It is used if the class of the \code{obj} argument is nanotime.
-By default, \code{Sys.timezone()}.}
 }
 \description{
 This S3 class function is a wrapper to plot the large-sized data.
@@ -171,9 +138,6 @@ that user select manually in the shiny app.
 data(noise_fluct)
 
 shiny_hugeplot(noise_fluct$level)
-shiny_hugeplot(
-  noise_fluct$t, noise_fluct$level,
-  plotly_layout_options = list(xaxis = list(type = "date"))
-)
+shiny_hugeplot(noise_fluct$t, noise_fluct$level)
 }
 }

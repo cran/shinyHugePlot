@@ -52,16 +52,15 @@
 #' whether a generated shiny app will be run immediately.
 #' By default, \code{TRUE}.
 #' @param ... Not used.
+#' @importFrom htmltools div br
+#' @importFrom tidyselect everything
 #' @export
 #' @examples
 #' \donttest{
 #' data(noise_fluct)
 #'
 #' shiny_hugeplot(noise_fluct$level)
-#' shiny_hugeplot(
-#'   noise_fluct$t, noise_fluct$level,
-#'   plotly_layout_options = list(xaxis = list(type = "date"))
-#' )
+#' shiny_hugeplot(noise_fluct$t, noise_fluct$level)
 #' }
 shiny_hugeplot <- function(obj, ...) {
   UseMethod("shiny_hugeplot", obj)
@@ -71,7 +70,7 @@ shiny_hugeplot <- function(obj, ...) {
 #' @rdname shiny_hugeplot
 #' @export
 shiny_hugeplot.default <- function(
-    obj = NULL, y = NULL,
+    obj = NULL, y = NULL, tz = Sys.timezone(),
     n_out = 1000L,
     aggregator = min_max_aggregator$new(),
     run_shiny = TRUE,
@@ -83,145 +82,64 @@ shiny_hugeplot.default <- function(
     ...
 ) {
 
-  x <- obj
-
-  if (is.null(plotly_options$type)) plotly_options$type <- "scatter"
-  if (is.null(plotly_options$mode)) plotly_options$mode <- "lines"
+  args <- c(as.list(environment()), list(...))
 
 
-  assertthat::assert_that(
-    !is.null(x) || !is.null(y)
-  )
+  if (is.null(args$plotly_options$type)) args$plotly_options$type <- "scatter"
+  if (is.null(args$plotly_options$mode)) args$plotly_options$mode <- "lines"
 
-  if (is.null(x)) x = seq_along(y)
-  if (is.null(y)) {
+  x <- args$obj
+  y <- args$y
+  args$obj <- NULL
+  args$y <- NULL
+
+  assertthat::assert_that(!is.null(x) || !is.null(y))
+
+  if (is.null(x)) {
+    x = seq_along(y)
+  } else if (is.null(y)) {
     y = x
     x = seq_along(y)
   }
 
+  assertthat::assert_that(
+    inherits(x, c("numeric", "integer", "POSIXt", "integer64"))
+    )
+
+  # change x values and axis type, if necessary
+  if (inherits(x, "integer64")) {
+
+    tz_hms <- format(as.POSIXct("1970-01-01", tz), "%z") %>%
+      stringr::str_replace("^(\\-?)\\+?([0-9]{1,2})([0-9]{2})", "\\1\\2:\\3:00")
+    x <- (x + nanotime::as.nanoduration(tz_hms)) %>%
+      format("%Y-%m-%d %H:%M:%E9S")
+    args$plotly_layout_options$xaxis$type <- "date"
+
+  } else if (inherits(x, "POSIXt")) {
+
+    args$plotly_layout_options$xaxis$type <- "date"
+  }
+
+
+  # generate plotly object
   fig <- do.call(
     plotly::plot_ly,
-    c(
-      list(x = x, y = y),
-      plotly_options
-    )
+    c(list(x = x, y = y), args$plotly_options)
   )
 
-  if (length(plotly_layout_options) > 0) {
+  if (length(args$plotly_layout_options) > 0) {
 
     fig <- do.call(
       plotly::layout,
-      c(
-        list(fig),
-        plotly_layout_options
-      )
+      c(list(fig), args$plotly_layout_options)
     )
   }
 
-  shd <- shiny_hugeplot(
-    fig,
-    n_out = n_out,
-    aggregator = aggregator,
-    run_shiny = run_shiny,
-    downsampler_options = downsampler_options,
-    shiny_options = shiny_options,
-    width = width, height = height,
-  )
+  args$obj <- fig
 
-  invisible(shd)
-}
-
-
-
-#' @rdname shiny_hugeplot
-#' @export
-shiny_hugeplot.nanotime <- function(
-    obj = NULL, y = NULL, tz = Sys.timezone(),
-    n_out = 1000L,
-    aggregator = min_max_aggregator$new(),
-    run_shiny = TRUE,
-    downsampler_options = list(),
-    plotly_options = list(type = "scatter", mode = "lines"),
-    plotly_layout_options = list(xaxis = list(type = "date")),
-    shiny_options = list(),
-    width = "100%", height = "600px",
-    ...
-) {
-
-  t <- obj
-
-  if (is.null(plotly_options$type)) plotly_options$type <- "scatter"
-  if (is.null(plotly_options$mode)) plotly_options$mode <- "lines"
-  if (is.null(plotly_layout_options$xaxis$type)) {
-    plotly_layout_options$xaxis$type <- "date"
-  }
-
-  assertthat::assert_that(!is.null(y))
-  x <- nanotime_to_plotlytime(t, tz)
-
-  fig <- do.call(
-    plotly::plot_ly,
-    c(
-      list(x = x, y = y),
-      plotly_options
-    )
-  )
-
-  if (length(plotly_layout_options) > 0) {
-
-    fig <- do.call(
-      plotly::layout,
-      c(
-        list(fig),
-        plotly_layout_options
-      )
-    )
-  }
-
-  shd <- shiny_hugeplot(
-    fig,
-    n_out = n_out,
-    aggregator = aggregator,
-    run_shiny = run_shiny,
-    downsampler_options = downsampler_options,
-    shiny_options = shiny_options,
-    width = width, height = height
-  )
-
-  invisible(shd)
-}
-
-
-#' @rdname shiny_hugeplot
-#' @export
-shiny_hugeplot.POSIXct <- function(
-    obj = NULL, y = NULL, tz = Sys.timezone(),
-    n_out = 1000L,
-    aggregator = min_max_aggregator$new(),
-    run_shiny = TRUE,
-    downsampler_options = list(),
-    plotly_options = list(type = "scatter", mode = "lines"),
-    plotly_layout_options = list(xaxis = list(type = "date")),
-    shiny_options = list(),
-    width = "100%", height = "600px",
-    ...
-) {
-
-  obj = nanotime::as.nanotime(obj)
-
-  shd <- shiny_hugeplot(
-    obj = obj, y = y, tz = tz,
-    n_out = n_out,
-    aggregator = aggregator,
-    run_shiny = run_shiny,
-    downsampler_options = downsampler_options,
-    plotly_options = plotly_options,
-    plotly_layout_options = plotly_layout_options,
-    shiny_options = shiny_options,
-    width = width, height = height
-  )
-
-  invisible(shd)
+  # proceed to shiny_hugeplot.plotly
+  app <- do.call(shiny_hugeplot, args)
+  return(app)
 }
 
 
@@ -240,21 +158,16 @@ shiny_hugeplot.matrix <- function(
   ...
   ) {
 
-  mat <- obj
+  args <- c(as.list(environment()), list(...))
+  assertthat::assert_that(inherits(args$obj, "numeric"))
 
-  shd <- shiny_hugeplot(
-    mat[,1], mat[,2],
-    n_out = n_out,
-    aggregator = aggregator,
-    run_shiny = run_shiny,
-    downsampler_options = downsampler_options,
-    plotly_options = plotly_options,
-    plotly_layout_options = plotly_layout_options,
-    shiny_options = shiny_options,
-    width = width, height = height
-  )
+  mat <- args$obj
+  args$obj <- mat[,1]
+  args$y <- mat[,2]
 
-  invisible(shd)
+  # proceed to shiny_hugeplot.default
+  app <- do.call(shiny_hugeplot, args)
+  return(app)
 }
 
 #' @rdname shiny_hugeplot
@@ -272,39 +185,15 @@ shiny_hugeplot.data.frame <- function(
     ...
 ) {
 
-  df <- obj
+  assertthat::assert_that("x" %in% colnames(obj) && "y" %in% colnames(obj))
 
-  assertthat::assert_that("x" %in% colnames(df) && "y" %in% colnames(df))
+  df <- args$obj
+  args$obj <- df$x
+  args$y <- df$y
 
-  if (inherits(df$x, "numeric") || inherits(df$x, "integer")) {
-    shd <- shiny_hugeplot(
-      df$x, df$y,
-      n_out = n_out,
-      aggregator = aggregator,
-      run_shiny = run_shiny,
-      downsampler_options = downsampler_options,
-      plotly_options = plotly_options,
-      plotly_layout_options = plotly_layout_options,
-      shiny_options = shiny_options,
-      width = width, height = height
-    )
-    invisible(shd)
-  } else if (inherits(df$x, "nanotime")) {
-    shd <- shiny_hugeplot(
-      df$x, df$y, tz = tz,
-      n_out = n_out,
-      aggregator = aggregator,
-      run_shiny = run_shiny,
-      downsampler_options = downsampler_options,
-      plotly_options = plotly_options,
-      plotly_layout_options = plotly_layout_options,
-      shiny_options = shiny_options,
-      width = width, height = height
-    )
-    invisible(shd)
-  }
-
-  invisible(shd)
+  # proceed to shiny_hugeplot.default
+  app <- do.call(shiny_hugeplot, args)
+  return(app)
 }
 
 #' @rdname shiny_hugeplot
@@ -320,23 +209,127 @@ shiny_hugeplot.plotly <- function(
   ...
   ) {
 
-  p <- obj
-
   downsampler_options[["n_out"]] <- as.integer(n_out)
   downsampler_options[["aggregator"]] <- aggregator
 
-  shd <- do.call(
-    shiny_downsampler$new,
-    c(list(figure = p), downsampler_options)
+  ds <- do.call(
+    downsampler$new,
+    c(list(figure = obj), downsampler_options)
   )
 
-  if (run_shiny) {
-    app <- do.call(
-      shd$show_shiny,
-      list(shiny_options, width, height),
+  ui <- fluidPage(
+    checkboxInput(
+      "agg_select_check",
+      label = "Change down-sample condition"
+    ),
+    conditionalPanel(
+      condition = "input.agg_select_check == true",
+      htmltools::div(
+        selectizeInput(
+          "agg_selector", label = "Aggregator",
+          choices = list_aggregators() %>% str_subset("^[^(cus)]"),
+          select = ds$downsample_options$aggregator_name[1]
+        ),
+        numericInput(
+          "n_out_input", label = "Number of samples",
+          value = ds$downsample_options$n_out[1],
+          step = 1, min = 1, max = 1e5
+        ),
+        style = "display:flex"
+      )
+    ),
+    plotlyOutput(outputId = "fig", width = width, height = height),
+    "Relayout order:",
+    verbatimTextOutput("relayout_order"),
+    htmltools::br(),
+    downloadButton("get_data", "Get shown data")
+  )
+
+
+  server <- function(input, output, session) {
+    output$fig <- renderPlotly(ds$figure)
+    observe(
+      {
+        agg_class_input <- input[["agg_selector"]]
+
+        if (input[["agg_selector"]] == "null_aggregator") {
+          shinyjs::disable("n_out_input")
+        } else {
+          shinyjs::enable("n_out_input")
+        }
+
+        agg_input <- eval(parse(text = agg_class_input))$new(
+          interleave_gaps = ds$downsample_options$interleave_gaps[1],
+          nan_position = ds$downsample_options$nan_position[1]
+        )
+        n_out_input <- input[["n_out_input"]]
+
+        if (
+          agg_class_input != ds$downsample_options$aggregator_name[1] ||
+          n_out_input != ds$downsample_options$n_out[1]
+        ) {
+          reload <- TRUE
+          ds$set_downsample_options(
+            aggregator = agg_input,
+            n_out = n_out_input
+          )
+        } else {
+          reload <- FALSE
+        }
+
+        updatePlotlyH(
+          session = session, outputId = "fig",
+          relayout_order = plotly::event_data("plotly_relayout"),
+          ds_obj = ds, reload = reload
+        )
+      },
+      label = "figure_updater"
     )
+
+    output[["relayout_order"]] <- renderPrint({
+      relayout_order <- plotly::event_data("plotly_relayout")
+      if (is.null(relayout_order)) {
+        return()
+      } else {
+        plotly::event_data("plotly_relayout") %>%
+          purrr::map(~as.character(.x)) %>%
+          tibble::as_tibble() %>%
+          tidyr::pivot_longer(tidyselect::everything())
+      }
+    })
+
+    output[["get_data"]] <- downloadHandler(
+      filename = function() {
+        paste0(basename(tempfile("")), ".csv")
+      },
+      content = function(file) {
+        traces_df <- ds$plotly_data_to_df(
+          ds$figure$x$data, use_datatable = FALSE
+          ) %>%
+          dplyr::left_join(ds$downsample_options, by = "uid") %>%
+          dplyr::select(
+            tidyselect::vars_select_helpers$where(!inherits("R6"))
+            ) %>%
+          # dplyr::select(-aggregator_inst) %>%
+          dplyr::mutate(
+            x = purrr::modify_if(
+              .data$x, ~inherits(.x, "nanotime"),
+              ~as.POSIXct(.x, tz = Sys.timezone())
+            )
+          )
+
+        jsonlite::write_json(traces_df, path = file, pretty = TRUE)
+
+      }
+    )
+  }
+
+
+  app <- shinyApp(ui = ui, server = server, options = shiny_options)
+
+  if (run_shiny) {
     runApp(app)
   }
 
-  invisible(shd)
+  return(app)
 }

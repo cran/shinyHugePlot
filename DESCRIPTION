@@ -1,7 +1,7 @@
 Package: shinyHugePlot
 Type: Package
 Title: Efficient Plotting of Large-Sized Data
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: c(
     person(given = "Junta", family = "Tagusari", email = "j.tagusari@eng.hokudai.ac.jp", role = c("aut", "cre", "cph")),
     person(given = "Jonas", family = "Van Der Donckt", role = c("cph")),
@@ -12,9 +12,11 @@ Maintainer: Junta Tagusari <j.tagusari@eng.hokudai.ac.jp>
 Language: en-US
 Depends: R (>= 4.2.0), plotly (>= 4.10.0), shiny (>= 1.7.1)
 Imports: R6 (>= 2.5.1), dplyr (>= 1.0.9), tibble (>= 3.1.7), tidyr (>=
-        1.2.0), data.table (>= 1.14.2), stringr (>= 1.4.0), nanotime
-        (>= 0.3.6), assertthat (>= 0.2.1), bit64 (>= 4.0.5), purrr (>=
-        0.3.4)
+        1.2.0), tidyselect (>= 1.1.2), data.table (>= 1.14.2), stringr
+        (>= 1.4.0), nanotime (>= 0.3.6), assertthat (>= 0.2.1), bit64
+        (>= 4.0.5), purrr (>= 0.3.4), jsonlite (>= 1.8.0), lazyeval (>=
+        0.2.2), shinyjs (>= 2.1.0), htmltools (>= 0.5.2), rlang (>=
+        1.0.5)
 Suggests: testthat
 Description: 
     A tool to plot data with large sample size using 'shiny' and 'plotly'.
@@ -25,10 +27,10 @@ Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.2.1
 NeedsCompilation: no
-Packaged: 2022-09-22 03:57:46 UTC; j.tagusari
+Packaged: 2022-10-26 02:49:03 UTC; j.tagusari
 Author: Junta Tagusari [aut, cre, cph],
   Jonas Van Der Donckt [cph],
   Jeroen Van Der Donckt [cph],
   Emiel Deprost [cph]
 Repository: CRAN
-Date/Publication: 2022-09-22 04:20:03 UTC
+Date/Publication: 2022-10-26 06:40:02 UTC

@@ -1,25 +1,27 @@
-#' R6 abstract class for the aggregation
+#' R6 base class for the aggregation
 #'
 #' @export
 #' @docType class
 #' @format An \code{R6::R6Class} object
 #' @importFrom R6 R6Class
 #' @description
-#' An abstract class for the aggregation,
+#' A base class for the aggregation,
 #' which defines the structure of the class and
 #' is not available on a stand-alone basis.
-abstract_aggregator <- R6::R6Class(
-  "abstract_aggregator",
+aggregator <- R6::R6Class(
+  "aggregator",
   public = list(
-    #' @field interleave_gaps Whether \code{NA} values should be added
+    #' @field interleave_gaps Boolean.
+    #' Whether \code{NA} values should be added
     #' when there are gaps / irregularly sampled data
     interleave_gaps  = TRUE,
 
-    #' @field accepted_datatype Vector of supported data classes
+    #' @field accepted_datatype Character.
+    #' Classes that can be handled with the aggregator.
     accepted_datatype = NULL,
 
-    #' @field nan_position Character that indicates
-    #' where \code{NA}s are placed when gaps are detected
+    #' @field nan_position Character.
+    #' Where \code{NA}s are placed when gaps are detected.
     nan_position     = "end",
 
     #' @description
@@ -27,7 +29,7 @@ abstract_aggregator <- R6::R6Class(
     #' @param interleave_gaps Boolean, optional.
     #' Whether \code{NA} values should be added
     #' when there are gaps / irregularly sampled data.
-    #' A quantile-based approach is employed.
+    #' Gaps and irregular samples are detected with a quantile-based approach.
     #' By default, \code{FALSE}.
     #' @param nan_position Character, optional.
     #' Indicates where \code{NA}s are placed when gaps are detected.
@@ -36,7 +38,7 @@ abstract_aggregator <- R6::R6Class(
     #' If \code{"both"}, both the encompassing gap data points are replaced.
     #' This parameter is only effective
     #' when \code{interleave_gaps == TRUE}.
-    #' @param accepted_datatype Character vector, optional.
+    #' @param accepted_datatype Character, optional.
     #' This parameter indicates the supported data classes.
     #' If all data classes are accepted, set it to \code{NULL}.
     initialize = function(
@@ -50,13 +52,15 @@ abstract_aggregator <- R6::R6Class(
     #' @description
     #' Aggregates the given input and returns samples.
     #' @param x,y Indexes and values that has to be aggregated.
-    #' @param n_out Integer.
+    #' @param n_out Integer or numeric.
     #' The number of samples that the aggregated data contains.
     aggregate = function(x, y, n_out) {
       assertthat::assert_that(
         length(x) == length(y),
-        msg = "x and y must be the same length!"
+        msg = "x and y must be the same length"
        )
+
+      assertthat::assert_that(inherits(n_out, c("integer", "numeric")))
 
       # base case: the passed series is empty
       if (length(y) == 0) return(list(x = x, y = y))
@@ -74,7 +78,6 @@ abstract_aggregator <- R6::R6Class(
         )
       }
 
-
       # More samples that n_out -> perform data aggregation
       if (length(x) > n_out) {
         result <- private$aggregate_exec(x, y, n_out)
@@ -91,7 +94,7 @@ abstract_aggregator <- R6::R6Class(
 
         # gaps are inserted instead of replaced
         if (self$interleave_gaps) {
-          resultxy <- private$insert_gap_none(x, y)
+          resultxy <- private$insert_gap_none(result$x, result$y)
           result$x <- resultxy$x
           result$y <- resultxy$y
         }
@@ -100,23 +103,20 @@ abstract_aggregator <- R6::R6Class(
       return(result)
     }
 
- ),
+  ),
   private = list(
-    # abstract method that must be defined in the sub class
-    aggregate_exec = function(x, y, n_out) {
-      return(list(x = x[1:n_out], y = y[1:n_out]))
-      },
 
-    # @description
+    # method to aggregate x and y, which is defined in the sub class
+    aggregate_exec = function(x, y, n_out) {},
+
     # divide and conquer heuristic to calculate the median diff
-    # @param x vectors of indexes
-    # @returns named list contains `median` and `all` of
-    # the differences of indexes
     calc_key_diff = function(x) {
 
-      # remark: thanks to the prepend -> s_idx_diff.shape === len(s)
-      all_diff <- c(0, diff(x))
-
+      if (inherits(x, "integer64")) {
+        all_diff <- as.numeric(x - dplyr::lag(x))
+      } else {
+        all_diff <- c(0, diff(x))
+      }
       # To do so - use a quantile-based (median) approach
       # where we reshape the data
       # into `n_blocks` blocks and calculate the min
@@ -138,10 +138,7 @@ abstract_aggregator <- R6::R6Class(
     },
 
 
-    # @description
     # Insert NA between gaps / irregularly sampled data
-    # @param x,y vectors of indexes and values
-    # @returns named list contains `x` and `y` vectors where NAs are inserted
     insert_gap_none = function(x, y) {
 
       x_diff <- private$calc_key_diff(x)
@@ -160,12 +157,7 @@ abstract_aggregator <- R6::R6Class(
       return(list(x = x, y = y))
     },
 
-
-    # @description
     # Replace NA where a gap ends
-    # @param x,y vectors of indexes and values
-    # @returns named list contains `x` and `y` vectors
-    # where some keys and values are replaced with NAs
     replace_gap_end_none = function(x, y) {
 
       x_diff <- private$calc_key_diff(x)
@@ -184,7 +176,64 @@ abstract_aggregator <- R6::R6Class(
         y[nan_mask] <- NA
       }
       return(list(x = x, y = y))
-    }
+    },
 
- )
+    #' Generate a matrix using x and n_out
+    generate_matrix = function(x, n_out, remove_first_last = TRUE) {
+
+      if (remove_first_last) {
+        N <- length(x) - 2
+        n_out <- n_out - 2
+      } else {
+        N <- length(x)
+      }
+
+      bin_width <- c(
+        rep(ceiling(N / n_out), N %% n_out),
+        rep(floor(N / n_out), n_out - N %% n_out)
+      )
+
+      idx <- purrr::map2(
+        bin_width, dplyr::lag(cumsum(bin_width), default = 0),
+        ~c(.y + seq(1, .x), rep(NA, max(bin_width) - .x))
+      ) %>%
+        unlist()
+
+      if (remove_first_last) idx <- idx + 1
+
+      if (inherits(x, "integer64")) {
+        x <- bit64::as.integer64(x)
+        m <- x[idx]
+        dim(m) <- c(length(idx) %/% n_out, n_out)
+      } else {
+        m <- matrix(x[idx], ncol = n_out, byrow = FALSE)
+      }
+
+      return(m)
+    },
+
+    #' Apply function for nanotime
+    apply_nano64 = function(mat, margin, func){
+      assertthat::assert_that(inherits(mat, "integer64"))
+      assertthat::assert_that(inherits(margin, c("numeric", "integer")))
+      assertthat::assert_that(inherits(func, "function"))
+
+      margin <- as.integer(margin)
+      assertthat::assert_that(margin %in% c(1L, 2L))
+
+      nm <- seq(1, dim(mat)[margin])
+      v <- as.nanotime(nm)
+
+      if (margin == 1L) {
+        for (i in nm) {
+          v[i] <- as.nanotime(func(mat[i, ]))
+        }
+      } else {
+        for (i in nm) {
+          v[i] <- as.nanotime(func(mat[, i]))
+        }
+      }
+      return(v)
+    }
+  )
 )
