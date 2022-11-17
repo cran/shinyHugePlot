@@ -8,21 +8,16 @@
 #' and calculate specific statistical values such as the mean.
 #' @examples
 #' data(noise_fluct)
-#' agg <- custom_stat_aggregator$new(y_func = mean)
-#' d_agg <- agg$aggregate(noise_fluct$sec, noise_fluct$level, 1000)
-#' plot(d_agg$x, d_agg$y, type = "l")
+#' agg <- custom_stat_aggregator$new(y_func = mean, interleave_gaps = TRUE)
+#' d_agg <- agg$aggregate(noise_fluct$time, noise_fluct$f500, 1000)
+#' plotly::plot_ly(x = d_agg$x, y = d_agg$y, type = "scatter", mode = "lines")
 #'
-#' agg <- custom_stat_aggregator$new(y_func = max, x_mean = FALSE)
-#' d_agg <- agg$aggregate(noise_fluct$sec, noise_fluct$level, 1000)
-#' plot(d_agg$x, d_agg$y, type = "l")
 custom_stat_aggregator <- R6::R6Class(
   "custom_stat_aggregator",
   inherit = aggregator,
   public = list(
     #' @description
     #' Constructor of the Aggregator.
-    #' @param interleave_gaps,nan_position
-    #' Arguments pass to \code{aggregator$new}.
     #' @param y_func Function.
     #' Statistical values are calculated using this function.
     #' By default, \code{mean}.
@@ -33,17 +28,21 @@ custom_stat_aggregator <- R6::R6Class(
     #' set this argument to \code{FALSE}, x values that give the maximum
     #' y values are used.
     #' By default, \code{TRUE}.
-    #' @param ... Not used.
+    #' @description
+    #' Constructor of the Aggregator.
+    #' @param interleave_gaps,coef_gap,NA_position,accepted_datatype,...
+    #' Arguments pass to the constructor of \code{aggregator} object.
     initialize = function(
-      y_func = mean,
-      x_mean = TRUE,
-      interleave_gaps = FALSE, nan_position = "end", ...
-    ) {
+      ...,
+      y_func = mean, x_mean = TRUE,
+      interleave_gaps, coef_gap, NA_position, accepted_datatype
+      ) {
+      args <- c(as.list(environment()), list(...))
+      do.call(super$initialize, args)
       private$y_func <- function(x) y_func(na.omit(x))
       private$x_mean <- x_mean
-      super$initialize(interleave_gaps, nan_position, accepted_datatype = NULL)
-
     }
+
   ),
   private = list(
     y_func = NULL,

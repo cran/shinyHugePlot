@@ -10,19 +10,16 @@ d <- tibble::tibble(
 )
 
 # plotly downsampler
+fig <- plotly::plot_ly(x = d$x, y = d$y, type = "scatter", mode = "lines")
+ds <- downsampler$new()
 
-app <- shiny_downsampler$new()
-app$add_trace(x = d$x, y = d$y, type = "scatter", mode = "lines")
-app$show_shiny()
+ds$figure
 
+ds$add_trace(x = d$x[1:10000], y = d$y[1:10000], type = "scatter", mode = "lines", name = "trace new", color = "orange")
+ds$add_trace(x = d$x[10001:20000], y = d$y[10001:20000], type = "scatter", mode = "lines", name = "trace new", color = "red", aggregator = range_stat_aggregator$new(), n_out = 100)
 
-app <- shiny_downsampler$new()
-app$add_trace(
-  x = d$x, y = d$y, type = "scatter", mode = "lines",
-  aggregator = range_stat_aggregator$new(y = NULL), n_out = 100
-)
-app$add_trace(
-  x = d$x, y = d$y, type = "scatter", mode = "lines",
-  aggregator = min_max_aggregator$new(), n_out = 100
-  )
-app$show_shiny()
+ds$figure
+ds$update_trace(reset = TRUE)
+
+ds$figure
+

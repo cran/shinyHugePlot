@@ -1,3 +1,8 @@
+# shinyHugePlot 0.2.1
+
+* Method to handle data inside the package was updated and the computational time was decreased
+* Sample data (noise_fluct) was updated
+
 # shinyHugePlot 0.2.0
 
 * Tidy data structure is introduced

@@ -17,12 +17,14 @@ When the x is factor or character, it will be encoded into numeric codes.
 }
 \examples{
 data(noise_fluct)
-agg <- LTTB_aggregator$new()
-d_agg <- agg$aggregate(noise_fluct$sec, noise_fluct$level, 1000)
-plot(d_agg$x, d_agg$y, type = "l")
+agg <- LTTB_aggregator$new(interleave_gaps = TRUE)
+d_agg <- agg$aggregate(
+  x = noise_fluct$time, y = noise_fluct$f500, n_out = 1000
+  )
+plotly::plot_ly(x = d_agg$x, y = d_agg$y, type = "scatter", mode = "lines")
 }
 \section{Super class}{
-\code{\link[shinyHugePlot:aggregator]{shinyHugePlot::aggregator}} -> \code{LTTB_aggregator}
+\code{shinyHugePlot::aggregator} -> \code{LTTB_aggregator}
 }
 \section{Methods}{
 \subsection{Public methods}{
@@ -35,6 +37,7 @@ plot(d_agg$x, d_agg$y, type = "l")
 <details open><summary>Inherited methods</summary>
 <ul>
 <li><span class="pkg-link" data-pkg="shinyHugePlot" data-topic="aggregator" data-id="aggregate"><a href='../../shinyHugePlot/html/aggregator.html#method-aggregator-aggregate'><code>shinyHugePlot::aggregator$aggregate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="shinyHugePlot" data-topic="aggregator" data-id="set_parameters"><a href='../../shinyHugePlot/html/aggregator.html#method-aggregator-set_parameters'><code>shinyHugePlot::aggregator$set_parameters()</code></a></span></li>
 </ul>
 </details>
 }}
@@ -42,22 +45,22 @@ plot(d_agg$x, d_agg$y, type = "l")
 \if{html}{\out{<a id="method-LTTB_aggregator-new"></a>}}
 \if{latex}{\out{\hypertarget{method-LTTB_aggregator-new}{}}}
 \subsection{Method \code{new()}}{
-Constructor of the Aggregator.
+Constructor of the aggregator.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{LTTB_aggregator$new(
-  interleave_gaps = FALSE,
-  nan_position = "end",
+  ...,
   nt_y_ratio = 1e+09,
   x_y_ratio = 1,
-  ...
+  interleave_gaps,
+  coef_gap,
+  NA_position,
+  accepted_datatype = c("numeric", "integer", "character", "factor", "logical")
 )}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{interleave_gaps, nan_position}}{Arguments pass to \code{aggregator$new}.}
-
 \item{\code{x_y_ratio, nt_y_ratio}}{Numeric.
 These parameters set the unit length of the numeric \code{x}
 and \code{nanotime} x.
@@ -66,7 +69,8 @@ assuming 2 is the unit length of \code{x}
 (and 1 is always the unit length of \code{y}).
 The unit length is employed to calculate the area of the triangles.}
 
-\item{\code{...}}{not used.
+\item{\code{interleave_gaps, coef_gap, NA_position, accepted_datatype, ...}}{Arguments pass to the constructor of \code{aggregator} object.
+Note that \code{accepted_datatype} has default value.
 Downsample with the Largest Triangle Three Buckets (LTTB) aggregation method}
 }
 \if{html}{\out{</div>}}

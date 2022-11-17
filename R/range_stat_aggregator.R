@@ -10,32 +10,34 @@
 #' values of the data, such as the max, min and mean.
 #' @examples
 #' data(noise_fluct)
-#' agg <- range_stat_aggregator$new(ylwr = min, y = mean, yupr = max)
-#' d_agg <- agg$aggregate(noise_fluct$sec, noise_fluct$level, 1000)
-#' plot(d_agg$x, d_agg$ylwr, type = "l")
-#' plot(d_agg$x, d_agg$y, type = "l")
-#' plot(d_agg$x, d_agg$yupr, type = "l")
+#' agg <- range_stat_aggregator$new(
+#'   ylwr = min, y = mean, yupr = max, interleave_gaps = TRUE
+#' )
+#' d_agg <- agg$aggregate(noise_fluct$time, noise_fluct$f500, 100)
+#' plotly::plot_ly(x = d_agg$x, y = d_agg$y, type = "scatter", mode = "lines") %>%
+#'   plotly::add_trace(x = d_agg$x, y = d_agg$ylwr, type = "scatter", mode = "lines")%>%
+#'   plotly::add_trace(x = d_agg$x, y = d_agg$yupr, type = "scatter", mode = "lines")
 #'
 range_stat_aggregator <- R6::R6Class(
   "range_stat_aggregator",
   inherit = rng_aggregator,
   public = list(
     #' @description
-    #' Constructor of the Aggregator.
-    #' @param interleave_gaps,nan_position
-    #' Arguments pass to \code{aggregator$new}.
+    #' Constructor of the aggregator.
+    #' @param interleave_gaps,coef_gap,NA_position,accepted_datatype,...
+    #' Arguments pass to the constructor of \code{aggregator} object.
     #' @param yupr,y,ylwr Functions.
     #' Statistical values are calculated using this function.
     #' By default, \code{max, mean, min}, respectively.
     #' Note that the NA values are omitted automatically.
-    #' @param ... Not used.
     initialize = function(
-    ylwr = min,
-    y = mean,
-    yupr = max,
-    interleave_gaps = FALSE, nan_position = "end",
-    ...
+      ...,
+      ylwr = min, y = mean, yupr = max,
+      interleave_gaps, coef_gap, NA_position, accepted_datatype
     ) {
+      args <- c(as.list(environment()), list(...))
+      do.call(super$initialize, args)
+
       assertthat::assert_that(
         all(
           c(
@@ -51,7 +53,6 @@ range_stat_aggregator <- R6::R6Class(
       if (!is.null(y)) {
         private$y    <- function(x) y(na.omit(x))
       }
-      super$initialize(interleave_gaps, nan_position, accepted_datatype = NULL)
     }
   ),
   private = list(

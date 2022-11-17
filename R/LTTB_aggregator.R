@@ -13,17 +13,17 @@
 #' When the x is factor or character, it will be encoded into numeric codes.
 #' @examples
 #' data(noise_fluct)
-#' agg <- LTTB_aggregator$new()
-#' d_agg <- agg$aggregate(noise_fluct$sec, noise_fluct$level, 1000)
-#' plot(d_agg$x, d_agg$y, type = "l")
+#' agg <- LTTB_aggregator$new(interleave_gaps = TRUE)
+#' d_agg <- agg$aggregate(
+#'   x = noise_fluct$time, y = noise_fluct$f500, n_out = 1000
+#'   )
+#' plotly::plot_ly(x = d_agg$x, y = d_agg$y, type = "scatter", mode = "lines")
 LTTB_aggregator <- R6::R6Class(
   "LTTB_aggregator",
   inherit = aggregator,
   public = list(
     #' @description
-    #' Constructor of the Aggregator.
-    #' @param interleave_gaps,nan_position
-    #' Arguments pass to \code{aggregator$new}.
+    #' Constructor of the aggregator.
     #' @param x_y_ratio,nt_y_ratio Numeric.
     #' These parameters set the unit length of the numeric \code{x}
     #' and \code{nanotime} x.
@@ -31,28 +31,39 @@ LTTB_aggregator <- R6::R6Class(
     #' assuming 2 is the unit length of \code{x}
     #' (and 1 is always the unit length of \code{y}).
     #' The unit length is employed to calculate the area of the triangles.
-    #' @param ... not used.
+    #' @param interleave_gaps,coef_gap,NA_position,accepted_datatype,...
+    #' Arguments pass to the constructor of \code{aggregator} object.
+    #' Note that \code{accepted_datatype} has default value.
     initialize = function(
-      interleave_gaps = FALSE, nan_position = "end",
-      nt_y_ratio = 1e9, x_y_ratio = 1.0, ...
+      ...,
+      nt_y_ratio = 1e9, x_y_ratio = 1.0,
+      interleave_gaps, coef_gap, NA_position,
+      accepted_datatype = c("numeric", "integer", "character", "factor", "logical")
     ) {
-
-      super$initialize(
-        interleave_gaps,
-        nan_position,
-        accepted_datatype = c(
-          "numeric", "integer", "character", "factor", "logical"
-        )
-      )
+      args <- c(as.list(environment()), list(...))
+      do.call(super$initialize, args)
       private$nt_y_ratio <- nt_y_ratio
       private$x_y_ratio <- x_y_ratio
     }
+
   ),
 
   private = list(
     nt_y_ratio = 1,
     x_y_ratio = 1,
     aggregate_exec = function(x, y, n_out) {
+
+      # if x is given as POSIX time, convert it to nanotime
+      if (inherits(x, "POSIXt")) {
+        convert_x <- TRUE
+        if (inherits(x, "POSIXct")) {
+          fun_convert_x <- as.POSIXct
+        } else {
+          fun_convert_x <- as.POSIXlt
+        }
+        x <- nanotime::as.nanotime(x)
+      }
+
 
       # if x is time,
       # convert it to integer64 and normalized using `nt_y_ratio`
@@ -86,6 +97,10 @@ LTTB_aggregator <- R6::R6Class(
         )
 
         result$x <- result$x * private$x_y_ratio
+      }
+
+      if (convert_x) {
+        result$x <- fun_convert_x(result$x)
       }
 
       if (inherits(y, "factor")) {

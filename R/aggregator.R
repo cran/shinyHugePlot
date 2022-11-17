@@ -11,42 +11,23 @@
 aggregator <- R6::R6Class(
   "aggregator",
   public = list(
-    #' @field interleave_gaps Boolean.
-    #' Whether \code{NA} values should be added
-    #' when there are gaps / irregularly sampled data
-    interleave_gaps  = TRUE,
-
-    #' @field accepted_datatype Character.
-    #' Classes that can be handled with the aggregator.
-    accepted_datatype = NULL,
-
-    #' @field nan_position Character.
-    #' Where \code{NA}s are placed when gaps are detected.
-    nan_position     = "end",
 
     #' @description
     #' Constructor of abstract_aggregator
-    #' @param interleave_gaps Boolean, optional.
-    #' Whether \code{NA} values should be added
-    #' when there are gaps / irregularly sampled data.
-    #' Gaps and irregular samples are detected with a quantile-based approach.
-    #' By default, \code{FALSE}.
-    #' @param nan_position Character, optional.
-    #' Indicates where \code{NA}s are placed when gaps are detected.
-    #' If \code{"end"}, the first point after a gap will be replaced.
-    #' If \code{"begin"}, the last point before a gap will be replaced.
-    #' If \code{"both"}, both the encompassing gap data points are replaced.
-    #' This parameter is only effective
-    #' when \code{interleave_gaps == TRUE}.
-    #' @param accepted_datatype Character, optional.
-    #' This parameter indicates the supported data classes.
-    #' If all data classes are accepted, set it to \code{NULL}.
+    #' @param ... Not used.
+    #' @param interleave_gaps,NA_position,coef_gap,accepted_datatype
+    #' Arguments passed to \code{self$set_parameters}, optional.
     initialize = function(
-      interleave_gaps = FALSE, nan_position = "end", accepted_datatype = NULL
+      ...,
+      interleave_gaps = FALSE, NA_position = "begin", coef_gap = 3.0,
+      accepted_datatype = NULL
       ) {
-      self$interleave_gaps   <- interleave_gaps
-      self$accepted_datatype <- accepted_datatype
-      self$nan_position      <- nan_position
+      self$set_parameters(
+        interleave_gaps   = interleave_gaps,
+        coef_gap          = coef_gap,
+        NA_position       = NA_position,
+        accepted_datatype = accepted_datatype
+      )
     },
 
     #' @description
@@ -66,116 +47,171 @@ aggregator <- R6::R6Class(
       if (length(y) == 0) return(list(x = x, y = y))
 
       # assert that the datatype of y is acceptable
-      if (!is.null(self$accepted_datatype)) {
+      if (!is.null(private$accepted_datatype)) {
         assertthat::assert_that(
-          inherits(y, self$accepted_datatype),
+          inherits(y, private$accepted_datatype),
           msg = paste(
             "Data type of the y is", paste(class(y), collapse = "/"),
-            ", which doesn't match with the accepted data classes (",
-            paste(self$accepted_datatype, collapse = "/"),
+            ", which doesn't match with the applicable data classes (",
+            paste(private$accepted_datatype, collapse = "/"),
             ")"
           )
         )
       }
 
-      # More samples that n_out -> perform data aggregation
-      if (length(x) > n_out) {
-        result <- private$aggregate_exec(x, y, n_out)
-
-        # Replace the end of gap periods (i.e. the first non-gap sample) with NA
-        if (self$interleave_gaps) {
-          resultxy <- private$replace_gap_end_none(result$x, result$y)
-          result$x <- resultxy$x
-          result$y <- resultxy$y
-        }
-      } else { # Less samples than n_out -> no data aggregation
+      # if the samples are less than n_out, return input
+      if (length(x) < n_out) {
 
         result <- list(x = x, y = y)
 
-        # gaps are inserted instead of replaced
-        if (self$interleave_gaps) {
-          resultxy <- private$insert_gap_none(result$x, result$y)
-          result$x <- resultxy$x
-          result$y <- resultxy$y
+      # if not, perform aggregation
+      } else {
+
+        result <- private$aggregate_exec(x, y, n_out)
+
+      }
+
+      # if interleve_gaps is TRUE, procedure for irregular gaps is conducted
+      if (private$interleave_gaps) {
+
+        # compute where the irregular gaps are
+        gap_idx <- private$cmpt_gap_idx(result$x)
+
+        # if no aggregation, insert NAs at the irregular gaps
+        # note that the length might be longer than n_out
+        if (length(x) < n_out) {
+
+          result_grp <- cumsum(is.element(seq_along(x), gap_idx + 1))
+
+          insertNA <- function(out, input) return(c(out, NA, input))
+
+          result <- purrr::map(
+            result,
+            ~split(.x, result_grp) %>%
+              purrr::reduce(insertNA)
+          )
+
+        # if aggregation is performed, replace the gaps with NA
+        # the length of the results is not changed
+        } else if(length(gap_idx) > 0) {
+
+          if (private$NA_position == "begin") {
+            gap_idx <- gap_idx
+          } else if (private$NA_position == "both") {
+            gap_idx <- c(gap_idx, gap_idx + 1)
+          } else {
+            gap_idx <- gap_idx + 1
+          }
+
+          gap_idx <- gap_idx[gap_idx >= 1 & gap_idx <= length(result$x)]
+
+          result <- purrr::map(
+            result,
+            function(x) {
+              x[gap_idx] <- NA
+              return(x)
+            }
+          )
         }
       }
 
+
+
       return(result)
+    },
+
+    #' @description
+    #' Setting of the parameters for the aggregation
+    #' @param ... Not used.
+    #' @param interleave_gaps Boolean, optional.
+    #' Whether \code{NA} values should be added
+    #' when there are gaps / irregularly sampled data.
+    #' Irregular gaps between samples are determined whether the gap is larger than
+    #' the median of the sample gaps times the coefficient for detecting irregular gaps.
+    #' By default, \code{FALSE}.
+    #' @param NA_position Character, optional.
+    #' Indicates where \code{NA}s are placed when gaps are detected.
+    #' If \code{"end"}, the first point after a gap will be replaced.
+    #' If \code{"begin"}, the last point before a gap will be replaced.
+    #' If \code{"both"}, both the encompassing gap data points are replaced.
+    #' This parameter is only effective when \code{interleave_gaps == TRUE}.
+    #' By default, \code{"begin"}.
+    #' @param coef_gap Numeric, optional.
+    #' The coefficient to detect irregular gaps.
+    #' By default, 3.0.
+    #' @param accepted_datatype Character, optional.
+    #' This parameter indicates the supported data classes.
+    #' If all data classes are accepted, set it to \code{NULL}.
+    set_parameters = function(
+      ...,
+      interleave_gaps, NA_position, coef_gap, accepted_datatype
+    ) {
+      if (!missing(interleave_gaps)) {
+        assertthat::assert_that(inherits(interleave_gaps, "logical"))
+        private$interleave_gaps <- interleave_gaps
+      }
+
+      if (!missing(NA_position)) {
+        assertthat::assert_that(inherits(NA_position, "character"))
+        private$NA_position <- NA_position
+      }
+
+      if (!missing(coef_gap)) {
+        assertthat::assert_that(inherits(coef_gap, c("numeric", "integer")))
+        private$coef_gap <- as.numeric(coef_gap)
+      }
+
+      if (!missing(accepted_datatype)) {
+        assertthat::assert_that(
+          inherits(accepted_datatype, "character") || is.null(accepted_datatype)
+        )
+        private$accepted_datatype <- accepted_datatype
+      }
+
+      invisible()
     }
 
   ),
+
+  active = list(
+    #' @field parameters Parameters for the aggregation, returned as a named list.
+    parameters = function() {
+      list(
+        interleave_gaps   = private$interleave_gaps,
+        NA_position       = private$NA_position,
+        coef_gap          = private$coef_gap,
+        accepted_datatype = private$accepted_datatype
+      )
+    }
+  ),
+
   private = list(
+
+    # Whether the procedure for the large gaps is performed
+    interleave_gaps  = TRUE,
+
+    # accepted class
+    accepted_datatype = NULL,
+
+    # whether the (begin/both/end) of the gaps are replaced with NA
+    NA_position     = "end",
+
+    # how large the "large gap" compared to the median of the gap
+    coef_gap = 3.0,
 
     # method to aggregate x and y, which is defined in the sub class
     aggregate_exec = function(x, y, n_out) {},
 
-    # divide and conquer heuristic to calculate the median diff
-    calc_key_diff = function(x) {
+    # find where the gap is large and returns the index
+    cmpt_gap_idx = function(x) {
+      x_diff <- as.numeric(x - dplyr::lag(x)) %>% na.omit()
+      x_diff_med <- median(x_diff, na.rm = TRUE)
 
-      if (inherits(x, "integer64")) {
-        all_diff <- as.numeric(x - dplyr::lag(x))
-      } else {
-        all_diff <- c(0, diff(x))
-      }
-      # To do so - use a quantile-based (median) approach
-      # where we reshape the data
-      # into `n_blocks` blocks and calculate the min
-      n_blcks <- 128
-      if (length(x) > 5 * n_blcks) {
-        blck_size <- length(x) %/% n_blcks
+      if (is.na(x_diff_med)) return(integer())
 
-        # calculate the min and max and calculate the median on that
-        med_diff <- matrix(
-          all_diff[1:(blck_size * n_blcks)], nrow = n_blcks, byrow = TRUE
-         ) %>%
-          apply(1, mean, na.rm = TRUE) %>%
-          median()
-      } else {
-        med_diff <- median(all_diff, na.rm = TRUE)
-      }
-
-      return(list(median = med_diff, all = all_diff))
-    },
-
-
-    # Insert NA between gaps / irregularly sampled data
-    insert_gap_none = function(x, y) {
-
-      x_diff <- private$calc_key_diff(x)
-
-      # add None data-points in-between the gaps
-      if (!is.null(x_diff$median)) {
-        gap_key_idx <- which(x_diff$all > 3 * x_diff$median)
-        if (length(gap_key_idx) > 0) {
-          gap_key_idx <- gap_key_idx + seq(0, (length(gap_key_idx) - 1))
-          for (idx in gap_key_idx) {
-            x <- c(x[1:(idx - 1)], NA, x[idx:length(x)])
-            y <- c(y[1:(idx - 1)], NA, y[idx:length(y)])
-          }
-        }
-      }
-      return(list(x = x, y = y))
-    },
-
-    # Replace NA where a gap ends
-    replace_gap_end_none = function(x, y) {
-
-      x_diff <- private$calc_key_diff(x)
-      if (!is.null(x_diff$median)) {
-        # Replace data-points with NA where the gaps occur
-        # The default is the end of a gap
-        nan_mask <- x_diff$all > 4 * x_diff$median
-        if (self$nan_position == "begin") {
-          # Replace the last non-gap datapoint (begin of gap) with NA
-          nan_mask <- c(nan_mask[2:length(nan_mask)], TRUE)
-        } else if (self$nan_position == "both") {
-          # Replace the encompassing gap datapoints with NA
-          nan_mask  <- nan_mask | c(nan_mask[2:length(nan_mask)], TRUE)
-        }
-        x[nan_mask] <- NA
-        y[nan_mask] <- NA
-      }
-      return(list(x = x, y = y))
+      # compute index of which gap with the next value is large
+      gap_idx <- which(x_diff > private$coef_gap * x_diff_med)
+      return(gap_idx)
     },
 
     #' Generate a matrix using x and n_out
@@ -188,26 +224,32 @@ aggregator <- R6::R6Class(
         N <- length(x)
       }
 
-      bin_width <- c(
-        rep(ceiling(N / n_out), N %% n_out),
-        rep(floor(N / n_out), n_out - N %% n_out)
-      )
+      if (N < 1e6) {
+        bin_width <- c(
+          rep(ceiling(N / n_out), N %% n_out),
+          rep(floor(N / n_out), n_out - N %% n_out)
+        )
 
-      idx <- purrr::map2(
-        bin_width, dplyr::lag(cumsum(bin_width), default = 0),
-        ~c(.y + seq(1, .x), rep(NA, max(bin_width) - .x))
-      ) %>%
-        unlist()
+        idx <- purrr::map2(
+          bin_width, dplyr::lag(cumsum(bin_width), default = 0),
+          ~c(.y + seq(1, .x), rep(NA, max(bin_width) - .x))
+        ) %>%
+          unlist()
 
-      if (remove_first_last) idx <- idx + 1
+        if (remove_first_last) idx <- idx + 1
+        mx <- x[idx]
+      } else {
+        if (remove_first_last) x <- x[2:N]
+        mx <- c(x, rep(NA, ceiling(N / n_out) * n_out - N))
+      }
+
 
       if (inherits(x, "integer64")) {
-        x <- bit64::as.integer64(x)
-        m <- x[idx]
-        dim(m) <- c(length(idx) %/% n_out, n_out)
+        m <- bit64::as.integer64(mx)
       } else {
-        m <- matrix(x[idx], ncol = n_out, byrow = FALSE)
+        m <- mx
       }
+      dim(m) <- c(length(mx) %/% n_out, n_out)
 
       return(m)
     },

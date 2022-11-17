@@ -10,9 +10,9 @@
 #' \code{n_out} must be even number.
 #' @examples
 #' data(noise_fluct)
-#' agg <- min_max_ovlp_aggregator$new()
-#' d_agg <- agg$aggregate(noise_fluct$sec, noise_fluct$level, 1000)
-#' plot(d_agg$x, d_agg$y, type = "l")
+#' agg <- min_max_ovlp_aggregator$new(interleave_gaps = TRUE)
+#' d_agg <- agg$aggregate(noise_fluct$time, noise_fluct$f500, 1000)
+#' plotly::plot_ly(x = d_agg$x, y = d_agg$y, type = "scatter", mode = "lines")
 #'
 min_max_ovlp_aggregator <- R6::R6Class(
   "min_max_ovlp_aggregator",
@@ -20,11 +20,14 @@ min_max_ovlp_aggregator <- R6::R6Class(
   public = list(
     #' @description
     #' Constructor of the Aggregator.
-    #' @param interleave_gaps,nan_position
-    #' Arguments pass to \code{aggregator$new}.
-    #' @param ... Not used.
-    initialize = function(interleave_gaps = FALSE, nan_position = "end", ...) {
-      super$initialize(interleave_gaps, nan_position, accepted_datatype = NULL)
+    #' @param interleave_gaps,coef_gap,NA_position,accepted_datatype,...
+    #' Arguments pass to the constructor of \code{aggregator} object.
+    initialize = function(
+      ...,
+      interleave_gaps, coef_gap, NA_position, accepted_datatype
+    ) {
+      args <- c(as.list(environment()), list(...))
+      do.call(super$initialize, args)
     }
   ),
   private = list(

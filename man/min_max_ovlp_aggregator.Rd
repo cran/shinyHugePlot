@@ -15,13 +15,13 @@ and find the maximum and minimum values of each.
 }
 \examples{
 data(noise_fluct)
-agg <- min_max_ovlp_aggregator$new()
-d_agg <- agg$aggregate(noise_fluct$sec, noise_fluct$level, 1000)
-plot(d_agg$x, d_agg$y, type = "l")
+agg <- min_max_ovlp_aggregator$new(interleave_gaps = TRUE)
+d_agg <- agg$aggregate(noise_fluct$time, noise_fluct$f500, 1000)
+plotly::plot_ly(x = d_agg$x, y = d_agg$y, type = "scatter", mode = "lines")
 
 }
 \section{Super class}{
-\code{\link[shinyHugePlot:aggregator]{shinyHugePlot::aggregator}} -> \code{min_max_ovlp_aggregator}
+\code{shinyHugePlot::aggregator} -> \code{min_max_ovlp_aggregator}
 }
 \section{Methods}{
 \subsection{Public methods}{
@@ -34,6 +34,7 @@ plot(d_agg$x, d_agg$y, type = "l")
 <details open><summary>Inherited methods</summary>
 <ul>
 <li><span class="pkg-link" data-pkg="shinyHugePlot" data-topic="aggregator" data-id="aggregate"><a href='../../shinyHugePlot/html/aggregator.html#method-aggregator-aggregate'><code>shinyHugePlot::aggregator$aggregate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="shinyHugePlot" data-topic="aggregator" data-id="set_parameters"><a href='../../shinyHugePlot/html/aggregator.html#method-aggregator-set_parameters'><code>shinyHugePlot::aggregator$set_parameters()</code></a></span></li>
 </ul>
 </details>
 }}
@@ -43,15 +44,19 @@ plot(d_agg$x, d_agg$y, type = "l")
 \subsection{Method \code{new()}}{
 Constructor of the Aggregator.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{min_max_ovlp_aggregator$new(interleave_gaps = FALSE, nan_position = "end", ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{min_max_ovlp_aggregator$new(
+  ...,
+  interleave_gaps,
+  coef_gap,
+  NA_position,
+  accepted_datatype
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{interleave_gaps, nan_position}}{Arguments pass to \code{aggregator$new}.}
-
-\item{\code{...}}{Not used.}
+\item{\code{interleave_gaps, coef_gap, NA_position, accepted_datatype, ...}}{Arguments pass to the constructor of \code{aggregator} object.}
 }
 \if{html}{\out{</div>}}
 }

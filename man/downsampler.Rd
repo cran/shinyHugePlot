@@ -21,7 +21,7 @@ data(noise_fluct)
 # example 1: where shiny_hugeplot is employed
 # It is very easy
 # but customize is difficult and the computation cost might be high
-shiny_hugeplot(noise_fluct$t, noise_fluct$level)
+shiny_hugeplot(noise_fluct$time, noise_fluct$f500)
 
 # example 2: where user-defined shiny app is employed
 # a little complex
@@ -29,8 +29,8 @@ shiny_hugeplot(noise_fluct$t, noise_fluct$level)
 # where the computation cost is lowest.
 
 fig <- plot_ly(
-  x = noise_fluct$t,
-  y = noise_fluct$level,
+  x = noise_fluct$time,
+  y = noise_fluct$f500,
   type = "scatter",
   mode = "lines"
   ) \%>\%
@@ -58,7 +58,7 @@ shinyApp(ui = ui, server = server)
 }
 }
 \section{Super class}{
-\code{\link[shinyHugePlot:plotly_datahandler]{shinyHugePlot::plotly_datahandler}} -> \code{downsampler}
+\code{shinyHugePlot::plotly_datahandler} -> \code{downsampler}
 }
 \section{Active bindings}{
 \if{html}{\out{<div class="r6-active-bindings">}}
@@ -76,6 +76,7 @@ set in this instance.}
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-downsampler-new}{\code{downsampler$new()}}
+\item \href{#method-downsampler-add_trace}{\code{downsampler$add_trace()}}
 \item \href{#method-downsampler-update_trace}{\code{downsampler$update_trace()}}
 \item \href{#method-downsampler-set_downsample_options}{\code{downsampler$set_downsample_options()}}
 \item \href{#method-downsampler-clone}{\code{downsampler$clone()}}
@@ -96,11 +97,12 @@ set in this instance.}
 Constructing an abstract down-sampler.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{downsampler$new(
-  figure = plotly::plot_ly(),
+  figure = NULL,
   n_out = 1000L,
   aggregator = min_max_aggregator$new(),
   tz = Sys.timezone(),
-  legend_options = list(name_prefix = "<b style=\\"color:sandybrown\\">[R]</b> ",
+  use_light_build = TRUE,
+  legend_options = list(name_prefix = "<b style=\\"color:sandybrown\\">[S]</b> ",
     name_suffix = "", xdiff_prefix = "<i style=\\"color:#fc9944\\"> ~", xdiff_suffix =
     "</i>")
 )}\if{html}{\out{</div>}}
@@ -109,7 +111,7 @@ Constructing an abstract down-sampler.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{figure, legend_options, tz}}{Arguments passed to \code{plotly_datahandler$new}.}
+\item{\code{figure, legend_options, tz, use_light_build}}{Arguments passed to \code{plotly_datahandler$new}.}
 
 \item{\code{n_out}}{Integer or numeric.
 The number of samples shown after down-sampling. By default 1000.}
@@ -118,6 +120,27 @@ The number of samples shown after down-sampling. By default 1000.}
 Select an aggregation function. The list of the functions are obtained
 using \code{list_aggregators}.
 By default, \code{min_max_aggregator$new()}.}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-downsampler-add_trace"></a>}}
+\if{latex}{\out{\hypertarget{method-downsampler-add_trace}{}}}
+\subsection{Method \code{add_trace()}}{
+Add a trace to the plotly figure.
+It is a wrapper of \code{self$set_trace_data} and
+\code{self$set_downsample_options} and append a trace.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{downsampler$add_trace(..., traces_df = NULL, n_out = NULL, aggregator = NULL)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{..., traces_df}}{Arguments passed to \code{self$set_trace_data}}
+
+\item{\code{n_out, aggregator}}{Arguments passed to \code{self$set_downsample_options}.}
 }
 \if{html}{\out{</div>}}
 }

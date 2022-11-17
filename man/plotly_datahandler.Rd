@@ -52,11 +52,12 @@ if no values are assigned.
 Constructing an abstract down-sampler.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{plotly_datahandler$new(
-  figure = plotly::plot_ly(),
-  legend_options = list(name_prefix = "<b style=\\"color:sandybrown\\">[R]</b> ",
+  figure = NULL,
+  legend_options = list(name_prefix = "<b style=\\"color:sandybrown\\">[S]</b> ",
     name_suffix = "", xdiff_prefix = "<i style=\\"color:#fc9944\\"> ~", xdiff_suffix =
     "</i>"),
-  tz = Sys.timezone()
+  tz = Sys.timezone(),
+  use_light_build = TRUE
 )}\if{html}{\out{</div>}}
 }
 
@@ -72,13 +73,18 @@ Names of the elements are \code{name_prefix},
 and \code{xdiff_suffix}.
 \code{name_prefix} and \code{name_suffix}
 will be added to the name of the trace when the down-sampling is applied.
-By default, prefix is a bold orange \code{[R]} and suffix is none.
+By default, prefix is a bold orange \code{[S]} and suffix is none.
 \code{xdiff_prefix} and \code{xdiff_suffix} are employed to show
 the mean aggregation size of the down-sampling.}
 
 \item{\code{tz}}{Character, optional.
 Time zone used to display time-series data.
 By default \code{Sys.timezone()}.}
+
+\item{\code{use_light_build}}{Boolean, optional.
+Whether \code{plotly_build_light} is used.
+It quickly build scatter-type plotly data.
+By default, \code{TRUE}.}
 }
 \if{html}{\out{</div>}}
 }
@@ -88,6 +94,7 @@ By default \code{Sys.timezone()}.}
 \if{latex}{\out{\hypertarget{method-plotly_datahandler-set_trace_data}{}}}
 \subsection{Method \code{set_trace_data()}}{
 Add or overwrite the data of the traces.
+Before executing this function, \code{self$trace} must be registered.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{plotly_datahandler$set_trace_data(..., traces_df = NULL, append = FALSE)}\if{html}{\out{</div>}}
 }

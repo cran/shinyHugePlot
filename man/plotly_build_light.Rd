@@ -35,8 +35,18 @@ specific cases although it takes more time.
 data(noise_fluct)
 plotly_build_light(
   plotly::plot_ly(
-    x = noise_fluct$t,
-    y = noise_fluct$level,
+    x = noise_fluct$time,
+    y = noise_fluct$f500,
+    name = "level",
+    type = "scatter"
+  )
+)
+
+plotly_build_light(
+  plotly::plot_ly(
+    data = noise_fluct,
+    x = ~time,
+    y = ~f500,
     name = "level",
     type = "scatter"
   )

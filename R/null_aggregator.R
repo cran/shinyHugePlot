@@ -7,23 +7,36 @@
 #' It does not aggregate the data but returns the full samples within the range.
 #' @examples
 #' data(noise_fluct)
-#' agg <- null_aggregator$new()
-#' d_agg <- agg$aggregate(noise_fluct$sec, noise_fluct$level)
-#' plot(d_agg$x[1:100], d_agg$y[1:100], type = "l")
+#' agg <- null_aggregator$new(interleave_gaps = TRUE)
+#' d_agg <- agg$aggregate(noise_fluct$time, noise_fluct$f500)
+#' plotly::plot_ly(
+#'   x = d_agg$x[1:100], y = d_agg$y[1:100], type = "scatter", mode = "lines"
+#' )
 null_aggregator <- R6::R6Class(
   "null_aggregator",
   inherit = aggregator,
   public = list(
     #' @description
-    #' Constructor that changes nothing.
-    #' @param ... not used
-    initialize = function(...) {},
+    #' Constructor of the Aggregator.
+    #' @param interleave_gaps,coef_gap,NA_position,accepted_datatype,...
+    #' Arguments pass to the constructor of \code{aggregator} object.
+    initialize = function(
+      ...,
+      interleave_gaps, coef_gap, NA_position, accepted_datatype
+      ) {
+      args <- c(as.list(environment()), list(...))
+      do.call(super$initialize, args)
+    },
     #' @description
-    #' Function where no aggregation will be executed.
-    #' @param x,y Vectors.
-    #' @param n_out Integer, omitted.
-    aggregate = function(x, y, n_out = -1){
-      return(list(x = x, y = y))
+    #' A function that does nothing other than inserting NAs.
+    #' @param ... Arguments passed to \code{super$aggregate}.
+    aggregate = function(...) {
+      args <- list(...)
+      if (is.null(args$n_out)) args$n_out <- Inf
+      do.call(super$aggregate, args)
     }
+  ),
+  private = list(
+    aggregate_exec = function(x, y, ...) list(x = x, y = y)
   )
 )

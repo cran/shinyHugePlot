@@ -6,6 +6,7 @@
 \alias{shiny_hugeplot.matrix}
 \alias{shiny_hugeplot.data.frame}
 \alias{shiny_hugeplot.plotly}
+\alias{shiny_hugeplot.downsampler}
 \title{Wrapper for plotting large-sized data using shiny and plotly}
 \usage{
 shiny_hugeplot(obj, ...)
@@ -14,12 +15,13 @@ shiny_hugeplot(obj, ...)
   obj = NULL,
   y = NULL,
   tz = Sys.timezone(),
-  n_out = 1000L,
-  aggregator = min_max_aggregator$new(),
-  run_shiny = TRUE,
-  downsampler_options = list(),
+  use_light_build = TRUE,
   plotly_options = list(type = "scatter", mode = "lines"),
   plotly_layout_options = list(),
+  aggregator = min_max_aggregator$new(),
+  n_out = 1000L,
+  run_shiny = TRUE,
+  downsampler_options = list(),
   shiny_options = list(),
   width = "100\%",
   height = "600px",
@@ -31,6 +33,7 @@ shiny_hugeplot(obj, ...)
   n_out = 1000L,
   aggregator = min_max_aggregator$new(),
   run_shiny = TRUE,
+  use_light_build = TRUE,
   downsampler_options = list(),
   plotly_options = list(type = "scatter", mode = "lines"),
   plotly_layout_options = list(),
@@ -46,6 +49,7 @@ shiny_hugeplot(obj, ...)
   n_out = 1000L,
   aggregator = min_max_aggregator$new(),
   run_shiny = TRUE,
+  use_light_build = TRUE,
   downsampler_options = list(),
   plotly_options = list(type = "scatter", mode = "lines"),
   plotly_layout_options = list(),
@@ -60,7 +64,17 @@ shiny_hugeplot(obj, ...)
   n_out = 1000L,
   aggregator = min_max_aggregator$new(),
   run_shiny = TRUE,
+  use_light_build = TRUE,
   downsampler_options = list(),
+  shiny_options = list(),
+  width = "100\%",
+  height = "600px",
+  ...
+)
+
+\method{shiny_hugeplot}{downsampler}(
+  obj,
+  run_shiny = TRUE,
   shiny_options = list(),
   width = "100\%",
   height = "600px",
@@ -96,13 +110,24 @@ It is used to convert the nanotime to the time displayed in the figure.
 It is used if the class of the \code{obj} argument is nanotime.
 By default, \code{Sys.timezone()}.}
 
-\item{n_out}{Integer, optional.
-Number of samples get by the down-sampling. By default, 1000.}
+\item{use_light_build}{Boolean, optional.
+Whether a light version of the plotly data builder
+(\code{plotly_data_light}) implemented in this package is used.
+By default, \code{TRUE}.}
+
+\item{plotly_options}{Named list, optional.
+Arguments passed to \code{plotly::plot_ly}.}
+
+\item{plotly_layout_options}{Named list, optional.
+Arguments passed to \code{plotly::layout}.}
 
 \item{aggregator}{R6 class for the aggregation, optional.
 Select an aggregation function. The list of the functions are obtained
 using \code{list_aggregators}.
 By default, \code{min_max_aggregator$new()}.}
+
+\item{n_out}{Integer, optional.
+Number of samples get by the down-sampling. By default, 1000.}
 
 \item{run_shiny}{Boolean, optional.
 whether a generated shiny app will be run immediately.
@@ -112,12 +137,6 @@ By default, \code{TRUE}.}
 Arguments passed to \code{shiny_downsampler$new}, other than
 \code{aggregator} and \code{n_shown_samples}.
 To set these arguments, use \code{aggregator} and \code{n_out} arguments.}
-
-\item{plotly_options}{Named list, optional.
-Arguments passed to \code{plotly::plot_ly}.}
-
-\item{plotly_layout_options}{Named list, optional.
-Arguments passed to \code{plotly::layout}.}
 
 \item{shiny_options}{Named list, optional.
 Arguments passed to \code{shinyApp} function.}
@@ -137,7 +156,7 @@ that user select manually in the shiny app.
 \donttest{
 data(noise_fluct)
 
-shiny_hugeplot(noise_fluct$level)
-shiny_hugeplot(noise_fluct$t, noise_fluct$level)
+shiny_hugeplot(noise_fluct$f500)
+shiny_hugeplot(noise_fluct$time, noise_fluct$f500)
 }
 }

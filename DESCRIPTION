@@ -1,7 +1,7 @@
 Package: shinyHugePlot
 Type: Package
 Title: Efficient Plotting of Large-Sized Data
-Version: 0.2.0
+Version: 0.2.1
 Authors@R: c(
     person(given = "Junta", family = "Tagusari", email = "j.tagusari@eng.hokudai.ac.jp", role = c("aut", "cre", "cph")),
     person(given = "Jonas", family = "Van Der Donckt", role = c("cph")),
@@ -27,10 +27,10 @@ Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.2.1
 NeedsCompilation: no
-Packaged: 2022-10-26 02:49:03 UTC; j.tagusari
+Packaged: 2022-11-17 02:10:12 UTC; j.tagusari
 Author: Junta Tagusari [aut, cre, cph],
   Jonas Van Der Donckt [cph],
   Jeroen Van Der Donckt [cph],
   Emiel Deprost [cph]
 Repository: CRAN
-Date/Publication: 2022-10-26 06:40:02 UTC
+Date/Publication: 2022-11-17 03:40:02 UTC

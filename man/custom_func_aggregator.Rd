@@ -20,26 +20,22 @@ custom_agg_func <- function(x, y, n_out) {
   return(list(x = x[x_idx], y = y_agg))
 }
 data(noise_fluct)
-agg <- custom_func_aggregator$new(custom_agg_func)
-d_agg <- agg$aggregate(noise_fluct$sec, noise_fluct$level, 1000)
-plot(d_agg$x, d_agg$y, type = "l")
-
+agg <- custom_func_aggregator$new(
+  aggregation_func = custom_agg_func, interleave_gaps = TRUE
+  )
+d_agg <- agg$aggregate(
+  x = noise_fluct$time, y = noise_fluct$f500, n_out = 1000
+  )
+plotly::plot_ly(x = d_agg$x, y = d_agg$y, type = "scatter", mode = "lines")
 }
 \section{Super class}{
-\code{\link[shinyHugePlot:aggregator]{shinyHugePlot::aggregator}} -> \code{custom_func_aggregator}
-}
-\section{Public fields}{
-\if{html}{\out{<div class="r6-fields">}}
-\describe{
-\item{\code{aggregation_func}}{User-defined function to aggregate data,
-of which arguments are \code{x}, \code{y} and \code{n_out}.}
-}
-\if{html}{\out{</div>}}
+\code{shinyHugePlot::aggregator} -> \code{custom_func_aggregator}
 }
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-custom_func_aggregator-new}{\code{custom_func_aggregator$new()}}
+\item \href{#method-custom_func_aggregator-set_aggregation_func}{\code{custom_func_aggregator$set_aggregation_func()}}
 \item \href{#method-custom_func_aggregator-clone}{\code{custom_func_aggregator$clone()}}
 }
 }
@@ -47,6 +43,7 @@ of which arguments are \code{x}, \code{y} and \code{n_out}.}
 <details open><summary>Inherited methods</summary>
 <ul>
 <li><span class="pkg-link" data-pkg="shinyHugePlot" data-topic="aggregator" data-id="aggregate"><a href='../../shinyHugePlot/html/aggregator.html#method-aggregator-aggregate'><code>shinyHugePlot::aggregator$aggregate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="shinyHugePlot" data-topic="aggregator" data-id="set_parameters"><a href='../../shinyHugePlot/html/aggregator.html#method-aggregator-set_parameters'><code>shinyHugePlot::aggregator$set_parameters()</code></a></span></li>
 </ul>
 </details>
 }}
@@ -57,10 +54,12 @@ of which arguments are \code{x}, \code{y} and \code{n_out}.}
 Constructor of the Aggregator.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{custom_func_aggregator$new(
+  ...,
   aggregation_func,
-  interleave_gaps = FALSE,
-  nan_position = "end",
-  accepted_datatype = NULL
+  interleave_gaps,
+  coef_gap,
+  NA_position,
+  accepted_datatype
 )}\if{html}{\out{</div>}}
 }
 
@@ -71,9 +70,26 @@ Constructor of the Aggregator.
 User-defined function to aggregate data,
 of which arguments are \code{x}, \code{y} and \code{n_out}.}
 
-\item{\code{interleave_gaps, nan_position, accepted_datatype}}{Arguments pass to \code{aggregator$new}.}
+\item{\code{interleave_gaps, coef_gap, NA_position, accepted_datatype, ...}}{Arguments pass to the constructor of \code{aggregator} object.}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-custom_func_aggregator-set_aggregation_func"></a>}}
+\if{latex}{\out{\hypertarget{method-custom_func_aggregator-set_aggregation_func}{}}}
+\subsection{Method \code{set_aggregation_func()}}{
+Set a function to aggregate the data
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{custom_func_aggregator$set_aggregation_func(aggregation_func)}\if{html}{\out{</div>}}
+}
 
-\item{\code{...}}{Not used.}
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{aggregation_func}}{Function.
+User-defined function to aggregate data,
+of which arguments are \code{x}, \code{y} and \code{n_out}.}
 }
 \if{html}{\out{</div>}}
 }

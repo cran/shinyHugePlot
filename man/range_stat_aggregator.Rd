@@ -15,15 +15,17 @@ values of the data, such as the max, min and mean.
 }
 \examples{
 data(noise_fluct)
-agg <- range_stat_aggregator$new(ylwr = min, y = mean, yupr = max)
-d_agg <- agg$aggregate(noise_fluct$sec, noise_fluct$level, 1000)
-plot(d_agg$x, d_agg$ylwr, type = "l")
-plot(d_agg$x, d_agg$y, type = "l")
-plot(d_agg$x, d_agg$yupr, type = "l")
+agg <- range_stat_aggregator$new(
+  ylwr = min, y = mean, yupr = max, interleave_gaps = TRUE
+)
+d_agg <- agg$aggregate(noise_fluct$time, noise_fluct$f500, 100)
+plotly::plot_ly(x = d_agg$x, y = d_agg$y, type = "scatter", mode = "lines") \%>\%
+  plotly::add_trace(x = d_agg$x, y = d_agg$ylwr, type = "scatter", mode = "lines")\%>\%
+  plotly::add_trace(x = d_agg$x, y = d_agg$yupr, type = "scatter", mode = "lines")
 
 }
 \section{Super classes}{
-\code{\link[shinyHugePlot:aggregator]{shinyHugePlot::aggregator}} -> \code{\link[shinyHugePlot:rng_aggregator]{shinyHugePlot::rng_aggregator}} -> \code{range_stat_aggregator}
+\code{shinyHugePlot::aggregator} -> \code{shinyHugePlot::rng_aggregator} -> \code{range_stat_aggregator}
 }
 \section{Methods}{
 \subsection{Public methods}{
@@ -36,6 +38,7 @@ plot(d_agg$x, d_agg$yupr, type = "l")
 <details open><summary>Inherited methods</summary>
 <ul>
 <li><span class="pkg-link" data-pkg="shinyHugePlot" data-topic="aggregator" data-id="aggregate"><a href='../../shinyHugePlot/html/aggregator.html#method-aggregator-aggregate'><code>shinyHugePlot::aggregator$aggregate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="shinyHugePlot" data-topic="aggregator" data-id="set_parameters"><a href='../../shinyHugePlot/html/aggregator.html#method-aggregator-set_parameters'><code>shinyHugePlot::aggregator$set_parameters()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="shinyHugePlot" data-topic="rng_aggregator" data-id="as_plotly_range"><a href='../../shinyHugePlot/html/rng_aggregator.html#method-rng_aggregator-as_plotly_range'><code>shinyHugePlot::rng_aggregator$as_plotly_range()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="shinyHugePlot" data-topic="rng_aggregator" data-id="as_range"><a href='../../shinyHugePlot/html/rng_aggregator.html#method-rng_aggregator-as_range'><code>shinyHugePlot::rng_aggregator$as_range()</code></a></span></li>
 </ul>
@@ -45,15 +48,17 @@ plot(d_agg$x, d_agg$yupr, type = "l")
 \if{html}{\out{<a id="method-range_stat_aggregator-new"></a>}}
 \if{latex}{\out{\hypertarget{method-range_stat_aggregator-new}{}}}
 \subsection{Method \code{new()}}{
-Constructor of the Aggregator.
+Constructor of the aggregator.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{range_stat_aggregator$new(
+  ...,
   ylwr = min,
   y = mean,
   yupr = max,
-  interleave_gaps = FALSE,
-  nan_position = "end",
-  ...
+  interleave_gaps,
+  coef_gap,
+  NA_position,
+  accepted_datatype
 )}\if{html}{\out{</div>}}
 }
 
@@ -65,9 +70,7 @@ Statistical values are calculated using this function.
 By default, \code{max, mean, min}, respectively.
 Note that the NA values are omitted automatically.}
 
-\item{\code{interleave_gaps, nan_position}}{Arguments pass to \code{aggregator$new}.}
-
-\item{\code{...}}{Not used.}
+\item{\code{interleave_gaps, coef_gap, NA_position, accepted_datatype, ...}}{Arguments pass to the constructor of \code{aggregator} object.}
 }
 \if{html}{\out{</div>}}
 }

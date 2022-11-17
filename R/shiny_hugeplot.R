@@ -51,6 +51,10 @@
 #' @param run_shiny Boolean, optional.
 #' whether a generated shiny app will be run immediately.
 #' By default, \code{TRUE}.
+#' @param use_light_build Boolean, optional.
+#' Whether a light version of the plotly data builder
+#' (\code{plotly_data_light}) implemented in this package is used.
+#' By default, \code{TRUE}.
 #' @param ... Not used.
 #' @importFrom htmltools div br
 #' @importFrom tidyselect everything
@@ -59,8 +63,8 @@
 #' \donttest{
 #' data(noise_fluct)
 #'
-#' shiny_hugeplot(noise_fluct$level)
-#' shiny_hugeplot(noise_fluct$t, noise_fluct$level)
+#' shiny_hugeplot(noise_fluct$f500)
+#' shiny_hugeplot(noise_fluct$time, noise_fluct$f500)
 #' }
 shiny_hugeplot <- function(obj, ...) {
   UseMethod("shiny_hugeplot", obj)
@@ -70,13 +74,15 @@ shiny_hugeplot <- function(obj, ...) {
 #' @rdname shiny_hugeplot
 #' @export
 shiny_hugeplot.default <- function(
-    obj = NULL, y = NULL, tz = Sys.timezone(),
-    n_out = 1000L,
-    aggregator = min_max_aggregator$new(),
-    run_shiny = TRUE,
-    downsampler_options = list(),
+    obj = NULL, y = NULL,
+    tz = Sys.timezone(),
+    use_light_build = TRUE,
     plotly_options = list(type = "scatter", mode = "lines"),
     plotly_layout_options = list(),
+    aggregator = min_max_aggregator$new(),
+    n_out = 1000L,
+    run_shiny = TRUE,
+    downsampler_options = list(),
     shiny_options = list(),
     width = "100%", height = "600px",
     ...
@@ -91,6 +97,7 @@ shiny_hugeplot.default <- function(
   x <- args$obj
   y <- args$y
   args$obj <- NULL
+  args$x <- NULL
   args$y <- NULL
 
   assertthat::assert_that(!is.null(x) || !is.null(y))
@@ -139,7 +146,11 @@ shiny_hugeplot.default <- function(
 
   # proceed to shiny_hugeplot.plotly
   app <- do.call(shiny_hugeplot, args)
-  return(app)
+  if (run_shiny) {
+    invisible()
+  } else{
+    return(app)
+  }
 }
 
 
@@ -150,6 +161,7 @@ shiny_hugeplot.matrix <- function(
   n_out = 1000L,
   aggregator = min_max_aggregator$new(),
   run_shiny = TRUE,
+  use_light_build = TRUE,
   downsampler_options = list(),
   plotly_options = list(type = "scatter", mode = "lines"),
   plotly_layout_options = list(),
@@ -167,7 +179,11 @@ shiny_hugeplot.matrix <- function(
 
   # proceed to shiny_hugeplot.default
   app <- do.call(shiny_hugeplot, args)
-  return(app)
+  if (run_shiny) {
+    invisible()
+  } else{
+    return(app)
+  }
 }
 
 #' @rdname shiny_hugeplot
@@ -177,6 +193,7 @@ shiny_hugeplot.data.frame <- function(
     n_out = 1000L,
     aggregator = min_max_aggregator$new(),
     run_shiny = TRUE,
+    use_light_build = TRUE,
     downsampler_options = list(),
     plotly_options = list(type = "scatter", mode = "lines"),
     plotly_layout_options = list(),
@@ -186,6 +203,7 @@ shiny_hugeplot.data.frame <- function(
 ) {
 
   assertthat::assert_that("x" %in% colnames(obj) && "y" %in% colnames(obj))
+  args <- c(as.list(environment()), list(...))
 
   df <- args$obj
   args$obj <- df$x
@@ -193,29 +211,59 @@ shiny_hugeplot.data.frame <- function(
 
   # proceed to shiny_hugeplot.default
   app <- do.call(shiny_hugeplot, args)
-  return(app)
+  if (run_shiny) {
+    invisible()
+  } else{
+    return(app)
+  }
 }
+
 
 #' @rdname shiny_hugeplot
 #' @export
 shiny_hugeplot.plotly <- function(
-  obj,
-  n_out = 1000L,
-  aggregator = min_max_aggregator$new(),
-  run_shiny = TRUE,
-  downsampler_options = list(),
-  shiny_options = list(),
-  width = "100%", height = "600px",
-  ...
-  ) {
+    obj,
+    n_out = 1000L,
+    aggregator = min_max_aggregator$new(),
+    run_shiny = TRUE,
+    use_light_build = TRUE,
+    downsampler_options = list(),
+    shiny_options = list(),
+    width = "100%", height = "600px",
+    ...
+) {
 
-  downsampler_options[["n_out"]] <- as.integer(n_out)
-  downsampler_options[["aggregator"]] <- aggregator
+  args <- c(as.list(environment()), list(...))
+
+  args$downsampler_options[["n_out"]] <- as.integer(n_out)
+  args$downsampler_options[["aggregator"]] <- aggregator
+  args$downsampler_options[["use_light_build"]] <- use_light_build
 
   ds <- do.call(
     downsampler$new,
-    c(list(figure = obj), downsampler_options)
+    c(list(figure = args$obj), args$downsampler_options)
   )
+
+  args$obj <- ds
+
+  # proceed to shiny_hugeplot.default
+  app <- do.call(shiny_hugeplot, args)
+  if (run_shiny) {
+    invisible()
+  } else{
+    return(app)
+  }
+}
+
+#' @rdname shiny_hugeplot
+#' @export
+shiny_hugeplot.downsampler <- function(
+    obj, run_shiny = TRUE,
+    shiny_options = list(),
+    width = "100%", height = "600px",
+    ...) {
+
+  ds <- obj
 
   ui <- fluidPage(
     checkboxInput(
@@ -260,7 +308,7 @@ shiny_hugeplot.plotly <- function(
 
         agg_input <- eval(parse(text = agg_class_input))$new(
           interleave_gaps = ds$downsample_options$interleave_gaps[1],
-          nan_position = ds$downsample_options$nan_position[1]
+          NA_position = ds$downsample_options$NA_position[1]
         )
         n_out_input <- input[["n_out_input"]]
 
@@ -305,11 +353,11 @@ shiny_hugeplot.plotly <- function(
       content = function(file) {
         traces_df <- ds$plotly_data_to_df(
           ds$figure$x$data, use_datatable = FALSE
-          ) %>%
+        ) %>%
           dplyr::left_join(ds$downsample_options, by = "uid") %>%
           dplyr::select(
             tidyselect::vars_select_helpers$where(!inherits("R6"))
-            ) %>%
+          ) %>%
           # dplyr::select(-aggregator_inst) %>%
           dplyr::mutate(
             x = purrr::modify_if(
@@ -322,6 +370,9 @@ shiny_hugeplot.plotly <- function(
 
       }
     )
+    session$onSessionEnded(function() {
+      stopApp()
+    })
   }
 
 
@@ -329,7 +380,9 @@ shiny_hugeplot.plotly <- function(
 
   if (run_shiny) {
     runApp(app)
+    invisible()
+  } else {
+    return(app)
   }
-
-  return(app)
 }
+

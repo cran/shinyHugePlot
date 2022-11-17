@@ -4,32 +4,33 @@
 [![CRAN
 status](https://www.r-pkg.org/badges/version/shinyHugePlot)](https://CRAN.R-project.org/package=shinyHugePlot)
 
-The goal of shinyHugePlot is to efficiently plot the data of which
-sample size is very large, such as long time-series data. Using this
-package, small number of samples are obtained automatically from
-huge-sized data. Moreover, it can interactively change the samples
-according to the plot range which is defined by the user.
+The goal of `shinyHugePlot` is to efficiently visualize the data with a
+large sample size, such as long time-series data. Using this package, a
+small number of samples are obtained automatically from large-sized
+data. Moreover, it can interactively change the samples according to the
+data range defined by the user using `plotly` interfaces.
 
-For instance, assume that there is a data of which sample size is 1e8.
+For instance, assume that there is a data with a sample size of 1e8.
 
 Without this package, many charts are required: one for illustrating the
-overall data and ones for illustrating small parts of the data. To plot
-the overall data is necessary; however, it takes much time due to
-computational cost. It may be difficult to correctly illustrate the data
-because of the graphical resolution. Dividing the data into intervals
-and calculate statistical values such as mean may be a good approach for
-avoiding the problem due to the graphical resolution and for
-understanding the trend of the data; however, it requires repeated trial
-and error and the small fluctuations of the data will be lost. It is
-frequently necessary to extract a specific part of the data to study the
-small fluctuations; however, it also requires repeated trial and error.
+overall trend and ones for illustrating small parts of the data. To
+display the overall trend is necessary; however, it requires a large
+amount of time. It may be difficult to correctly illustrate the entire
+data because of the graphical resolution. Dividing the data into
+intervals and calculating statistical values, such as mean values, may
+be a good approach for avoiding such problems; however, it also requires
+a great amount of effort and slight fluctuations in the data will be
+lost. It is frequently necessary to extract a specific part of data to
+study slight fluctuations; however, it also requires a great amount of
+effort.
 
-With this package, necessary charts are obtained easily and quickly.
-Small number of samples are automatically obtained on a basis of
-specific algorithms, which helps understand the overall trend of the
-data. Zooming up the data provides new samples and illustrates the small
-fluctuations of the data. Both the overall and small fluctuations of the
-data can be easily and accurately understood.
+Using this package, data with a large sample size are visualized easily,
+quickly, and without errors. Small number of samples are automatically
+obtained on a basis of specific algorithms, which helps in understanding
+the overall trend of the data. Zooming up the data (using `plotly`
+interfaces) automatically provides new samples and slight fluctuations
+in the data are displayed. Both the overall and slight fluctuations of
+the data can be accurately understood.
 
 ## Installation
 
@@ -230,6 +231,6 @@ This package is distributed with the MIT license.
 
 ## ACKNOWLEDGMENT
 
-This package was developed inspired by the python package of
+Development of this package was inspired by the python package of
 `plotly_resampler`
 (<https://github.com/predict-idlab/plotly-resampler>).

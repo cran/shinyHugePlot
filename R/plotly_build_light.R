@@ -31,8 +31,18 @@
 #' data(noise_fluct)
 #' plotly_build_light(
 #'   plotly::plot_ly(
-#'     x = noise_fluct$t,
-#'     y = noise_fluct$level,
+#'     x = noise_fluct$time,
+#'     y = noise_fluct$f500,
+#'     name = "level",
+#'     type = "scatter"
+#'   )
+#' )
+#'
+#' plotly_build_light(
+#'   plotly::plot_ly(
+#'     data = noise_fluct,
+#'     x = ~time,
+#'     y = ~f500,
 #'     name = "level",
 #'     type = "scatter"
 #'   )
@@ -46,91 +56,49 @@ plotly_build_light <- function(
   assertthat::assert_that(inherits(fig, "plotly"))
   assertthat::assert_that(inherits(fig$x$attrs, "list"))
   assertthat::assert_that(!is.null(names(fig$x$attrs)))
-  assertthat::assert_that(
-    all(purrr::map_lgl(fig$x$attrs, ~"type" %in% names(.x)))
-  )
 
-  # convert to tibble
-  traces_df <- purrr::imap_dfr(
-    fig$x$attrs,
-    ~purrr::modify_if(.x, ~length(.x) > 1, list) %>%
-      tibble::as_tibble() %>%
-      dplyr::mutate(uid = .y)
-  )
-
-  # evaluate the data, if necessary
-  traces_df_eval <- traces_df %>%
-    dplyr::filter(!is.na(.data$type)) %>%
-    dplyr::mutate(
-      dplyr::across(
-        tidyselect::vars_select_helpers$where(
-          ~any(purrr::map_lgl(.x, lazyeval::is_formula))
-        ),
-        ~purrr::map2(
-          .x, uid,
-          ~lazyeval::f_eval(.x, plotly::plotly_data(fig, .y))
-        )
-      )
-    )
-
-  # divide high frequency variables and other attributes
-  traces_df_div <- purrr::pmap(
-    traces_df_eval,
-    function(...) {
-      args <- list(...)
-      args_length <- purrr::map_int(args, length)
-      hf_data_raw <- NULL # for binding a variable
-      hf_data <- NULL # for binding a variable
-
-      trace_df <- bind_cols(
-        args[args_length < args_length["x"]] %>%
-          purrr::modify_if(~length(.x) > 1, list) %>%
-          tibble::as_tibble(),
-        tibble::as_tibble(args[args_length == args_length["x"]]) %>%
-          tidyr::nest(
-            hf_data_raw = tidyselect::matches(paste0("^", vars_hf, "$"))
-          ) %>%
-          dplyr::mutate(
-            hf_data_raw = purrr::map(
-              .data$hf_data_raw,
-              ~dplyr::summarise(.x, across(.fns = list))
-            )
-          ) %>%
-          tidyr::unnest(hf_data_raw)
-      ) %>%
-        tidyr::nest(
-          hf_data = tidyselect::matches(paste0("^", vars_hf, "$"))
+  # evaluate the trace, if necessary
+  traces_div <- fig$x$attrs %>%
+    purrr::discard(~is.null(.x$type) || is.na(.x$type)) %>%
+    purrr::imodify(
+      function(trace, uid) {
+        trace_eval <- purrr::modify_if(
+          trace,
+          lazyeval::is_formula,
+          ~lazyeval::f_eval(.x, plotly::plotly_data(fig, uid))
         )
 
-      return(trace_df)
-    }
-  ) %>%
-    dplyr::bind_rows()
+        attrs_length <- purrr::map_int(trace_eval, length)
+        vars_long   <- names(trace_eval[attrs_length == attrs_length["x"]])
 
-  # obtain attributes of high frequency variables
-  hf_attrs <- traces_df_div$hf_data %>%
-    purrr::map(~purrr::map(.x, ~.x[[1]])) %>%
-    purrr::map(~purrr::discard(.x, ~all(is.na(.x))))
+        data_long <- trace_eval[vars_long] %>%
+          data.table::setDT() %>%
+          .[,lapply(.SD, list), by = setdiff(vars_long, vars_hf)]
 
-  # also obtaine other attributees
-  other_attrs <- traces_df_div %>%
-    dplyr::select(-matches("^hf_data$")) %>%
-    as.list() %>%
-    purrr::transpose() %>%
-    purrr::map(~purrr::discard(.x, ~all(is.na(.x))))
+        trace_data <- purrr::pmap(
+          data_long,
+          function(...) {
+            c(trace[setdiff(names(trace), vars_long)], list(...))
+          }
+        )
+
+        return(trace_data)
+      }
+    ) %>%
+    unlist(recursive = FALSE)
 
   # replace attributes with the ones without high frequency data
   # then build it
-  fig$x$attrs <- other_attrs
+  fig$x$attrs <- purrr::map(
+    traces_div,
+    ~.x[setdiff(names(.x), vars_hf)]
+  )
   fig_built <- plotly::plotly_build(fig)
-
-  # delete attributes
-  fig$x$attrs <- NULL
 
   # directly input the high frequency data to the plotly data
   fig_built$x$data <- purrr::map2(
-    fig_built$x$data, hf_attrs,
-    ~c(.x, .y)
+    fig_built$x$data, traces_div,
+    ~c(.x, .y[intersect(names(.y), vars_hf)])
   )
 
   return(fig_built)

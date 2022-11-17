@@ -12,18 +12,12 @@ A base class for the aggregation,
 which defines the structure of the class and
 is not available on a stand-alone basis.
 }
-\section{Public fields}{
-\if{html}{\out{<div class="r6-fields">}}
+\section{Active bindings}{
+\if{html}{\out{<div class="r6-active-bindings">}}
 \describe{
-\item{\code{interleave_gaps}}{Boolean.
-Whether \code{NA} values should be added
-when there are gaps / irregularly sampled data}
-
-\item{\code{accepted_datatype}}{Character.
-Classes that can be handled with the aggregator.}
-
-\item{\code{nan_position}}{Character.
-Where \code{NA}s are placed when gaps are detected.}
+\item{\code{parameters}}{Parameters for the aggregation, returned as a named list.
+Generate a matrix using x and n_out
+Apply function for nanotime}
 }
 \if{html}{\out{</div>}}
 }
@@ -32,6 +26,7 @@ Where \code{NA}s are placed when gaps are detected.}
 \itemize{
 \item \href{#method-aggregator-new}{\code{aggregator$new()}}
 \item \href{#method-aggregator-aggregate}{\code{aggregator$aggregate()}}
+\item \href{#method-aggregator-set_parameters}{\code{aggregator$set_parameters()}}
 \item \href{#method-aggregator-clone}{\code{aggregator$clone()}}
 }
 }
@@ -42,8 +37,10 @@ Where \code{NA}s are placed when gaps are detected.}
 Constructor of abstract_aggregator
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{aggregator$new(
+  ...,
   interleave_gaps = FALSE,
-  nan_position = "end",
+  NA_position = "begin",
+  coef_gap = 3,
   accepted_datatype = NULL
 )}\if{html}{\out{</div>}}
 }
@@ -51,23 +48,9 @@ Constructor of abstract_aggregator
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{interleave_gaps}}{Boolean, optional.
-Whether \code{NA} values should be added
-when there are gaps / irregularly sampled data.
-Gaps and irregular samples are detected with a quantile-based approach.
-By default, \code{FALSE}.}
+\item{\code{...}}{Not used.}
 
-\item{\code{nan_position}}{Character, optional.
-Indicates where \code{NA}s are placed when gaps are detected.
-If \code{"end"}, the first point after a gap will be replaced.
-If \code{"begin"}, the last point before a gap will be replaced.
-If \code{"both"}, both the encompassing gap data points are replaced.
-This parameter is only effective
-when \code{interleave_gaps == TRUE}.}
-
-\item{\code{accepted_datatype}}{Character, optional.
-This parameter indicates the supported data classes.
-If all data classes are accepted, set it to \code{NULL}.}
+\item{\code{interleave_gaps, NA_position, coef_gap, accepted_datatype}}{Arguments passed to \code{self$set_parameters}, optional.}
 }
 \if{html}{\out{</div>}}
 }
@@ -87,9 +70,53 @@ Aggregates the given input and returns samples.
 \item{\code{x, y}}{Indexes and values that has to be aggregated.}
 
 \item{\code{n_out}}{Integer or numeric.
-The number of samples that the aggregated data contains.
-Generate a matrix using x and n_out
-Apply function for nanotime}
+The number of samples that the aggregated data contains.}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-aggregator-set_parameters"></a>}}
+\if{latex}{\out{\hypertarget{method-aggregator-set_parameters}{}}}
+\subsection{Method \code{set_parameters()}}{
+Setting of the parameters for the aggregation
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{aggregator$set_parameters(
+  ...,
+  interleave_gaps,
+  NA_position,
+  coef_gap,
+  accepted_datatype
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Not used.}
+
+\item{\code{interleave_gaps}}{Boolean, optional.
+Whether \code{NA} values should be added
+when there are gaps / irregularly sampled data.
+Irregular gaps between samples are determined whether the gap is larger than
+the median of the sample gaps times the coefficient for detecting irregular gaps.
+By default, \code{FALSE}.}
+
+\item{\code{NA_position}}{Character, optional.
+Indicates where \code{NA}s are placed when gaps are detected.
+If \code{"end"}, the first point after a gap will be replaced.
+If \code{"begin"}, the last point before a gap will be replaced.
+If \code{"both"}, both the encompassing gap data points are replaced.
+This parameter is only effective when \code{interleave_gaps == TRUE}.
+By default, \code{"begin"}.}
+
+\item{\code{coef_gap}}{Numeric, optional.
+The coefficient to detect irregular gaps.
+By default, 3.0.}
+
+\item{\code{accepted_datatype}}{Character, optional.
+This parameter indicates the supported data classes.
+If all data classes are accepted, set it to \code{NULL}.}
 }
 \if{html}{\out{</div>}}
 }

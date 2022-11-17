@@ -29,7 +29,7 @@
 #' # example 1: where shiny_hugeplot is employed
 #' # It is very easy
 #' # but customize is difficult and the computation cost might be high
-#' shiny_hugeplot(noise_fluct$t, noise_fluct$level)
+#' shiny_hugeplot(noise_fluct$time, noise_fluct$f500)
 #'
 #' # example 2: where user-defined shiny app is employed
 #' # a little complex
@@ -37,8 +37,8 @@
 #' # where the computation cost is lowest.
 #'
 #' fig <- plot_ly(
-#'   x = noise_fluct$t,
-#'   y = noise_fluct$level,
+#'   x = noise_fluct$time,
+#'   y = noise_fluct$f500,
 #'   type = "scatter",
 #'   mode = "lines"
 #'   ) %>%
@@ -76,7 +76,7 @@ downsampler <- R6::R6Class(
     # constructor ---------------------------------------------------------
     #' @description
     #' Constructing an abstract down-sampler.
-    #' @param figure,legend_options,tz
+    #' @param figure,legend_options,tz,use_light_build
     #' Arguments passed to \code{plotly_datahandler$new}.
     #' @param n_out Integer or numeric.
     #' The number of samples shown after down-sampling. By default 1000.
@@ -86,12 +86,13 @@ downsampler <- R6::R6Class(
     #' By default, \code{min_max_aggregator$new()}.
     #'
     initialize = function(
-      figure = plotly::plot_ly(),
+      figure = NULL,
       n_out = 1000L,
       aggregator = min_max_aggregator$new(),
       tz = Sys.timezone(),
+      use_light_build = TRUE,
       legend_options = list(
-        name_prefix  = '<b style="color:sandybrown">[R]</b> ',
+        name_prefix  = '<b style="color:sandybrown">[S]</b> ',
         name_suffix  = "",
         xdiff_prefix = '<i style="color:#fc9944"> ~',
         xdiff_suffix = "</i>"
@@ -102,7 +103,8 @@ downsampler <- R6::R6Class(
       super$initialize(
         figure = figure,
         legend_options = legend_options,
-        tz = tz
+        tz = tz,
+        use_light_build = use_light_build
       )
 
       # check classes and lengths of the arguments
@@ -122,7 +124,24 @@ downsampler <- R6::R6Class(
 
     }, #end of initialization
 
+    #' @description
+    #' Add a trace to the plotly figure.
+    #' It is a wrapper of \code{self$set_trace_data} and
+    #' \code{self$set_downsample_options} and append a trace.
+    #' @param ...,traces_df Arguments passed to \code{self$set_trace_data}
+    #' @param n_out,aggregator
+    #' Arguments passed to \code{self$set_downsample_options}.
+    add_trace = function(
+      ..., traces_df = NULL,
+      n_out = NULL, aggregator = NULL){
 
+      self$set_trace_data(..., traces_df = traces_df, append = TRUE)
+
+      uid <- setdiff(self$orig_data$uid, self$downsample_options$uid)
+      self$set_downsample_options(uid, n_out, aggregator)
+
+      invisible()
+    },
 
     #' @description
     #' Update traces (\code{self$figure$x$data}) according to
@@ -183,6 +202,23 @@ downsampler <- R6::R6Class(
 
       # compute updated data of the traces
       traces_update_df <- private$construct_agg_traces(relayout_order_df)
+
+      # set showlegend to FALSE, if many series are output
+      # because of range_stat_aggregator
+      if (any(duplicated(traces_update_df$uid))) {
+        is_duplicated <- rep(FALSE, nrow(traces_update_df))
+        is_uid_rng <- purrr::map_lgl(traces_update_df$trace, ~!is.null(.x[["fill"]]))
+        is_duplicated[is_uid_rng] <- duplicated(traces_update_df$uid[is_uid_rng])
+
+        traces_update_df$trace[is_duplicated] <- purrr::map(
+          traces_update_df$trace[is_duplicated],
+          function(trace){
+            trace$showlegend <- FALSE
+            return(trace)
+          }
+        )
+      }
+
       # detect the index of the trace to be updated
       if (is.null(self$figure$x$data) ||
           any(purrr::map_lgl(self$figure$x$data, ~is.null(.$uid)))
@@ -237,6 +273,7 @@ downsampler <- R6::R6Class(
     set_downsample_options = function(
       uid = NULL, n_out = NULL, aggregator = NULL
     ){
+
       if (is.null(uid)) uid <- private$traces_df$uid
       if (is.null(n_out)) n_out <- private$n_out_def
       if (is.null(aggregator)) aggregator <- private$aggregator_def
@@ -251,8 +288,8 @@ downsampler <- R6::R6Class(
           aggregator_inst = list(aggregator),
           aggregator_name = class(aggregator)[1],
           n_out = n_out,
-          interleave_gaps = aggregator$interleave_gaps,
-          nan_position = aggregator$nan_position
+          interleave_gaps = aggregator$parameters$interleave_gaps,
+          NA_position = aggregator$parameters$NA_position
         )
       )
       invisible()
@@ -290,17 +327,23 @@ downsampler <- R6::R6Class(
 
       assertthat::assert_that(inherits(relayout_order, "list"))
 
-      # show the relayout order
-      message(paste(
-        paste(
-          "relayout order: {",
+      # show the relayout order or RESET or RELOAD notification
+      if (!reset && !reload) {
+        message(paste(
           paste(
-            paste(names(relayout_order), relayout_order, sep = ":"),
-            collapse = " "
-          ),
-          "}"
-        )
-      ))
+            "Re-layout order: {",
+            paste(
+              paste(names(relayout_order), relayout_order, sep = ":"),
+              collapse = " "
+            ),
+            "}"
+          )
+        ))
+      } else if (reset) {
+        message("Initialize the samples")
+      } else if (reload) {
+        message("Reload the samples")
+      }
 
       # prepare blank data frame for the type of the relayout order
       order_type_blank <- tibble::tribble(
@@ -407,6 +450,7 @@ downsampler <- R6::R6Class(
       return(relayout_order_df)
     },
 
+
     # construct a data frame of aggregated traces,
     # by employing the data frame representing relayout_order.
     construct_agg_traces = function(relayout_order_df = NULL) {
@@ -422,7 +466,8 @@ downsampler <- R6::R6Class(
       )
 
       # select columns
-      traces_update_df <- relayout_order_df[c("uid", "start", "end")]
+      traces_update_df <-
+        relayout_order_df[, c("uid", "start", "end"), with = FALSE]
 
       # MAIN aggregation
       traces_update_df$agg_result <- purrr::pmap(
@@ -435,7 +480,7 @@ downsampler <- R6::R6Class(
       )
 
       # construct a list representing a trace
-      traces_update_list <- traces_update_df %>%
+      traces_update_agg_df <- traces_update_df %>%
         tidyr::unnest(agg_result) %>%
         dplyr::select(-start, -end) %>%
         dplyr::mutate(
@@ -449,14 +494,23 @@ downsampler <- R6::R6Class(
               ~purrr::modify_if(.x, ~length(.x) > 1, list) %>% as_tibble(.x)
             )
         ) %>%
-        tidyr::unnest(data) %>%
-        dplyr::left_join(
-          private$traces_df[c(
-            "uid",
-            setdiff(colnames(private$traces_df), c(colnames(.), "data"))
-          )],
-          by = "uid"
-        ) %>%
+        tidyr::unnest(data)
+
+
+      # join with the current data
+      colname_from_current <- c(
+        "uid",
+        setdiff(
+          colnames(private$traces_df),
+          c(colnames(traces_update_agg_df), "data")
+        )
+      )
+
+      traces_update_list <- left_join(
+        traces_update_agg_df,
+        private$traces_df[, colname_from_current, with = FALSE],
+        by = "uid"
+      ) %>%
         as.list() %>%
         purrr::transpose() %>%
         purrr::map(~purrr::discard(.x, ~all(is.na(.x))))
@@ -489,16 +543,15 @@ downsampler <- R6::R6Class(
       # down-sample x and y
       data_agg <- aggregator$
         aggregate(
-          data$x, data$y, n_out
+          x = data$x, y = data$y, n_out = n_out
         )%>%
-        data.table::as.data.table() %>%
+        data.table::setDT() %>%
         merge(
           data[,
                intersect(colnames(data), c("x", "text", "hovertext")),
                with = FALSE],
           all.x = TRUE, sort = FALSE
           )
-
 
       # number of the aggregated data
       nrow_agg <- nrow(data_agg)
@@ -510,7 +563,7 @@ downsampler <- R6::R6Class(
         if_else(is.na(legendgroup), "", paste0("/", legendgroup)),
         ": ",
         if_else(
-          nrow_orig == nrow_agg,
+          nrow_orig <= nrow_agg,
           paste0("no down-sample (n: ", nrow_orig, ")"),
           paste0("applied down-sample (n: ", nrow_orig, " -> ", nrow_agg, ")")
         )
@@ -524,7 +577,7 @@ downsampler <- R6::R6Class(
 
       # generate a name for aggregation
       name <- if_else(
-        nrow_orig == nrow_agg,
+        nrow_orig <= nrow_agg || inherits(aggregator, "null_aggregator"),
         as.character(name),
         private$cmpt_trace_name(name, data_agg$x)
       )
@@ -536,13 +589,13 @@ downsampler <- R6::R6Class(
 
       # add the range of the data if the aggregator is rng_aggregator
       if (inherits(aggregator, "rng_aggregator")) {
-        data_rng <- aggregator$as_plotly_range(
+        list_attr_rng <- aggregator$as_plotly_range(
           x = data_agg$x, y = data_agg$y,
           ylwr = data_agg$ylwr, yupr = data_agg$yupr
           )
 
         data_agg <- data_agg[, c("x", "y"), with = FALSE]
-        data_agg <- c(list(data_agg), list(data_rng))
+        data_agg <- c(list(data_agg), list_attr_rng)
       } else {
         data_agg <- list(data_agg)
       }

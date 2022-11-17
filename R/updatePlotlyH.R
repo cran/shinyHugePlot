@@ -24,7 +24,10 @@
 #' @examples
 #'\donttest{
 #' data(noise_fluct)
-#' fig <- plot_ly(x = d$x, y = d$y, type = "scatter", mode = "lines")
+#' fig <- plot_ly(
+#'   x = noise_fluct$time, y = noise_fluct$f500,
+#'   type = "scatter", mode = "lines"
+#' )
 #'
 #' ds <- downsampler$new(figure = fig)
 #'

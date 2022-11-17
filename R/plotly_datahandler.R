@@ -41,25 +41,31 @@ plotly_datahandler <- R6::R6Class(
     #' and \code{xdiff_suffix}.
     #' \code{name_prefix} and \code{name_suffix}
     #' will be added to the name of the trace when the down-sampling is applied.
-    #' By default, prefix is a bold orange \code{[R]} and suffix is none.
+    #' By default, prefix is a bold orange \code{[S]} and suffix is none.
     #' \code{xdiff_prefix} and \code{xdiff_suffix} are employed to show
     #' the mean aggregation size of the down-sampling.
     #' @param tz Character, optional.
     #' Time zone used to display time-series data.
     #' By default \code{Sys.timezone()}.
+    #' @param use_light_build Boolean, optional.
+    #' Whether \code{plotly_build_light} is used.
+    #' It quickly build scatter-type plotly data.
+    #' By default, \code{TRUE}.
     #'
     initialize = function(
-      figure = plotly::plot_ly(),
+      figure = NULL,
       legend_options = list(
-        name_prefix  = '<b style="color:sandybrown">[R]</b> ',
+        name_prefix  = '<b style="color:sandybrown">[S]</b> ',
         name_suffix  = "",
         xdiff_prefix = '<i style="color:#fc9944"> ~',
         xdiff_suffix = "</i>"
       ),
-      tz = Sys.timezone()
+      tz = Sys.timezone(),
+      use_light_build = TRUE
     ) {
+
       # check classes and lengths of the arguments
-      assertthat::assert_that(inherits(figure, "plotly"))
+      assertthat::assert_that(is.null(figure) || inherits(figure, "plotly"))
       assertthat::assert_that(inherits(legend_options, "list"))
       assertthat::assert_that(inherits(tz, "character"))
 
@@ -75,50 +81,66 @@ plotly_datahandler <- R6::R6Class(
 
       private$tz <- tz
 
-      # register the figure
-      self$figure <- figure
-
-      # build and relayout the figure
-      # note that first build may take a lot of time
-      if (is.null(figure$x$data)) {
-        warning("building plotly data for the first time may take much time")
+      # before registering the data,
+      # build the data of the figure
+      if (is.null(figure)) {
+        figure <- plotly::plot_ly() %>% plotly_build_light()
+      } else if (is.null(figure$x$data)) {
+        if (use_light_build) {
+          figure <- plotly_build_light(figure)
+        } else {
+          message("building plotly data for the first time may take much time")
+          figure <- plotly::plotly_build(figure)
+        }
       }
+
       x_title <- figure$x$layout$xaxis$title
       y_title <- figure$x$layout$yaxis$title
 
+      # note: this subplot may change the layout
       figure <- plotly::subplot(
         figure,
         titleX = !is.null(x_title) && is.character(x_title),
         titleY = !is.null(y_title) && is.character(y_title)
       )
 
-      # convert the trace data to tibble
+      # convert the trace data to data frame
+      # it will be registered after adjusting figure data,
+      # because self$figure must be registered before doing that
       private$set_trace_df_default()
       traces_df <- self$plotly_data_to_df(figure$x$data)
 
-      # delete the data
-      self$figure$x$attrs <- NULL
-      self$figure$x$data <- purrr::map2(
-        figure$x$data, traces_df$data,
-        ~.x[setdiff(names(.x), colnames(.y))]
-        )
-
-      # setting of the show legend
-      if (is.null(self$figure$x$layout$showlegend) ||
-          self$figure$x$layout$showlegend == FALSE) {
-        self$figure$x$layout$showlegend <- TRUE
+      # change figure data according to the traces_df, if necessary
+      figure$x$attrs <- NULL
+      if (nrow(traces_df) > 0 && "data" %in% colnames(traces_df)) {
+        figure$x$data <- purrr::map2(
+          figure$x$data, traces_df$data,
+          ~.x[setdiff(names(.x), colnames(.y))]
+          )
+      } else if (nrow(traces_df) == 0) {
+        figure$x$data <- plotly::plotly_build(plotly::plot_ly())$x$data
       }
 
-      # add the trace to the self$figure
+      # setting of the show legend
+      if (is.null(figure$x$layout$showlegend) ||
+          figure$x$layout$showlegend == FALSE) {
+        figure$x$layout$showlegend <- TRUE
+      }
+
+      # finally register the figure and the data
+      self$figure <- figure
       self$set_trace_data(traces_df = traces_df)
+
     }, #end of initialization
 
     #' @description
     #' Add or overwrite the data of the traces.
+    #' Before executing this function, \code{self$trace} must be registered.
     #' @param ... Arguments constitute a plotly attribute, optional.
     #' (e.g., \code{id}, \code{x}, \code{y},
     #' \code{type}, \code{mode}).
-    #' Note that un-build data will be built by \code{plotly_build}.
+    #' Note that data will be built using \code{plotly_build_light}
+    #' if it is not built.
     #' @param traces_df Data frame, optional.
     #' Data frame that contains all the attributes of a plotly trace
     #' in each row. See \code{self$orig_data} field.
@@ -132,13 +154,11 @@ plotly_datahandler <- R6::R6Class(
 
       # make traces_df, if not given
       if (is.null(traces_df)) {
-        traces_df <- private$plotly_build_simple(list(...)) %>%
+        message("data is built with plotly_build_light")
+        traces_df <- plotly::plot_ly(...) %>%
+          plotly_build_light() %>%
+          .$x %>% .$data %>%
           self$plotly_data_to_df()
-      }
-
-      if (nrow(traces_df) == 0) {
-        message("no data is registered because no data are given")
-        return()
       }
 
       if (append) {
@@ -150,8 +170,35 @@ plotly_datahandler <- R6::R6Class(
         private$traces_df <- traces_df
       }
 
+      # set figure xaxis
+      traces_axis <- private$traces_df %>%
+        dplyr::mutate(
+          xaxis_type = purrr::map_chr(
+            data,
+            ~if_else(inherits(.x$x, "nanotime"), "date", "linear")
+          )
+        ) %>%
+        dplyr::distinct(xaxis, xaxis_type) %>%
+        dplyr::group_by(xaxis) %>%
+        dplyr::mutate(cnt = dplyr::n()) %>%
+        dplyr::ungroup() %>%
+        dplyr::mutate(xaxis = stringr::str_replace(xaxis, "^x", "xaxis"))
+
+      if (any(traces_axis$cnt > 1)) {
+        warning("types of the x values are not consistent")
+        traces_axis <- dplyr::distinct(trace_axis, xaxis, .keep_all = TRUE)
+      }
+
+      args <- NULL
+      for (i in 1:nrow(traces_axis)) {
+        args[[traces_axis$xaxis[i]]][["type"]] <- traces_axis$xaxis_type[i]
+      }
+
+      self$figure <- do.call(plotly::layout, c(list(self$figure), args))
+
       invisible()
     },
+
 
     #' @description
     #' Covert plotly data to data frame, with generating new uid
@@ -160,7 +207,7 @@ plotly_datahandler <- R6::R6Class(
     #' all of which must have \code{type}.
     #' @param use_datatable Boolean.
     #' If it is \code{TRUE}, data such as \code{x} and \code{y} are nested
-    #' in a \code{data.table}, of which key colomn is \code{x}.
+    #' in a \code{data.table}, of which key column is \code{x}.
     #' By default, \code{TRUE}.
     plotly_data_to_df = function(plotly_data, use_datatable = TRUE) {
 
@@ -180,6 +227,7 @@ plotly_datahandler <- R6::R6Class(
         )
       )
 
+      # check trace members
       purrr::map(
         plotly_data,
         function(trace) {
@@ -202,83 +250,106 @@ plotly_datahandler <- R6::R6Class(
         }
       )
 
-      # build blank data frame
-      blank_df <- self$trace_df_default %>%
-        dplyr::filter(purrr::map_lgl(default, ~!is.null(.x))) %>%
-        dplyr::select(name, default) %>%
-        tidyr::pivot_wider(names_from = "name", values_from = "default") %>%
-        tidyr::unnest(everything()) %>%
-        .[0,]
+      # change the class, if necessary
+      tryCatch({
+        plotly_data <- purrr::map(
+          plotly_data,
+          function(trace) {
+            if (inherits(trace[["x"]], c("integer64", "POSIXt"))) {
+              trace[["x"]] <- nanotime::as.nanotime(trace[["x"]])
+            } else if (inherits(trace[["x"]], "character")) {
+              trace[["x"]] <- private$plotlytime_to_nanotime(
+                trace[["x"]], private$tz
+                )
+            }
 
-      # make a data frame to represent traces
-      traces_df <- purrr::map_dfr(
+            if (inherits(trace[["y"]], "character")) {
+              trace[["y"]] <- factor(trace[["y"]])
+            }
+            return(trace)
+          }
+        )
+      },
+      error = function(e) {
+        stop("x is not numeric or datetime")
+      }
+      )
+
+      vars_hf <- self$trace_df_default$name[self$trace_df_default$data]
+
+      # make data table and set key at initialization,
+      # of which cost is relatively high.
+      traces_df <- purrr::map(
         plotly_data,
-        ~purrr::modify_if(.x, ~length(.x) > 1 || is.list(.x), list) %>%
-          tibble::as_tibble()
+        function(trace) {
+
+          if (use_datatable) {
+
+            hf_data <- trace[intersect(names(trace), vars_hf)] %>%
+              data.table::setDT(key = "x") %>%
+              unique(by = "x")
+
+            trace_df <- c(
+              trace[setdiff(names(trace), vars_hf)] %>%
+                purrr::modify_if(~length(.x) > 1 || is.list(.x), list),
+              list(data = list(hf_data))
+              ) %>%
+              data.table::setDT()
+          } else {
+            trace_df <- trace %>%
+              purrr::modify_if(~length(.x) > 1 || is.list(.x), list) %>%
+              data.table::setDT()
+          }
+
+          return(trace_df)
+        }
       ) %>%
-        dplyr::bind_rows(
-          blank_df[setdiff(colnames(blank_df), colnames(.))]
-        ) %>%
-        dplyr::mutate(
-          uid = basename(tempfile(rep("", nrow(.)))),
-          name = if_else(
-            !is.na(name),
-            as.character(name),
-            paste("trace", dplyr::row_number())
-          ),
-          showlegend = dplyr::if_else(
-            is.na(legendgroup),
-            TRUE,
-            !duplicated(legendgroup)
-          )
+        bind_rows() %>%
+        bind_rows(
+          self$trace_df_default %>%
+            dplyr::filter(purrr::map_lgl(default, ~!is.null(.x))) %>%
+            dplyr::select(name, default) %>%
+            tidyr::pivot_wider(names_from = "name", values_from = "default") %>%
+            tidyr::unnest(everything()) %>%
+            .[0,]
         )
 
-      # change the class and get the axis type
-      tryCatch({
-        traces_df_newclass <- traces_df %>%
+
+      if (nrow(traces_df) > 0) {
+
+        traces_df_output <- traces_df %>%
           dplyr::mutate(
-            x = purrr::modify_if(
-              x, ~inherits(.x, c("integer64", "POSIXt")),
-              nanotime::as.nanotime
-            ) %>%
-              purrr::modify_if(
-                ~inherits(.x, "character"),
-                ~private$plotlytime_to_nanotime(.x, private$tz)
-              ) ,
-            y = purrr::modify_if(
-              y, ~inherits(.x, "character"),
-              factor
+            uid = basename(tempfile(rep("", nrow(.)))),
+            name = if_else(
+              !is.na(name),
+              as.character(name),
+              paste("trace", dplyr::row_number())
+            ),
+            showlegend = dplyr::if_else(
+              is.na(legendgroup),
+              TRUE,
+              !duplicated(legendgroup)
             )
           )
-      },
-        error = function(e) {
-          stop("x is not numeric or datetime")
-        }
-      )
-
-      # if not use_datatable, stop here
-      if (!use_datatable) return(traces_df_newclass)
-
-      # nest data columns and defined the data as data.table
-
-      # get column names
-      colnames_for_data <- intersect(
-        colnames(traces_df),
-        dplyr::filter(self$trace_df_default, data)$name
-      )
-
-      # nest them and change to data.table
-      traces_df_data <- traces_df_newclass %>%
-        tidyr::nest(data = colnames_for_data) %>%
-        dplyr::mutate(
-          data = purrr::map(
-            data,
-            ~tidyr::unnest(.x, everything()) %>%
-              data.table::data.table(key = "x")
+      } else {
+        traces_df_output <- traces_df %>%
+          bind_rows(
+            tibble(uid = "", name = "", showlegend = TRUE) %>%
+              .[0,]
           )
-        )
+      }
 
-      return(traces_df_data)
+
+      if (use_datatable && nrow(traces_df_output) > 0) {
+        message(paste0(
+          purrr::map_int(traces_df_output$data, nrow),
+          " unique data were obtained from ",
+          traces_df_output$name
+        ) %>%
+          paste(collapse = "\n"))
+      }
+
+      return(traces_df_output)
 
     }
   ), # end of the public member
@@ -327,7 +398,7 @@ plotly_datahandler <- R6::R6Class(
 
     # settings for the trace names
     legend_options = list(
-      name_prefix  = '<b style="color:sandybrown">[R]</b> ',
+      name_prefix  = '<b style="color:sandybrown">[S]</b> ',
       name_suffix  = "",
       xdiff_prefix = '<i style="color:#fc9944"> ~',
       xdiff_suffix = "</i>"
@@ -345,12 +416,12 @@ plotly_datahandler <- R6::R6Class(
       if (length(x) < 2) return(name)
 
       # mean difference of the x
-      x_diff_mean <- as.numeric(mean(diff(x), na.rm = TRUE))
+      x_diff_median <- as.numeric(median(diff(x), na.rm = TRUE))
 
       x_diff_chr <- dplyr::if_else(
         inherits(x, "nanotime"),
-        private$nanosecond_to_label(x_diff_mean),
-        private$numeric_to_label(x_diff_mean)
+        private$nanosecond_to_label(x_diff_median),
+        private$numeric_to_label(x_diff_median)
       )
 
       name <- paste0(
@@ -368,7 +439,7 @@ plotly_datahandler <- R6::R6Class(
 
     # Generate an aggregation label according to the data interval
     numeric_to_label = function(x) {
-      thr <- 0.1
+      thr <- 0.5
       e3_unit <- 1e3
       e6_unit <- 1e6
       e9_unit <- 1e9
@@ -387,7 +458,7 @@ plotly_datahandler <- R6::R6Class(
 
     # Generate an time-based aggregation label according to nanotime interval
     nanosecond_to_label = function(ns) {
-      thr     <- 0.1
+      thr     <- 0.5
       us_unit <- 1e3
       ms_unit <- 1e6
       s_unit  <- 1e9

@@ -12,12 +12,14 @@ It does not aggregate the data but returns the full samples within the range.
 }
 \examples{
 data(noise_fluct)
-agg <- null_aggregator$new()
-d_agg <- agg$aggregate(noise_fluct$sec, noise_fluct$level)
-plot(d_agg$x[1:100], d_agg$y[1:100], type = "l")
+agg <- null_aggregator$new(interleave_gaps = TRUE)
+d_agg <- agg$aggregate(noise_fluct$time, noise_fluct$f500)
+plotly::plot_ly(
+  x = d_agg$x[1:100], y = d_agg$y[1:100], type = "scatter", mode = "lines"
+)
 }
 \section{Super class}{
-\code{\link[shinyHugePlot:aggregator]{shinyHugePlot::aggregator}} -> \code{null_aggregator}
+\code{shinyHugePlot::aggregator} -> \code{null_aggregator}
 }
 \section{Methods}{
 \subsection{Public methods}{
@@ -27,19 +29,32 @@ plot(d_agg$x[1:100], d_agg$y[1:100], type = "l")
 \item \href{#method-null_aggregator-clone}{\code{null_aggregator$clone()}}
 }
 }
+\if{html}{\out{
+<details open><summary>Inherited methods</summary>
+<ul>
+<li><span class="pkg-link" data-pkg="shinyHugePlot" data-topic="aggregator" data-id="set_parameters"><a href='../../shinyHugePlot/html/aggregator.html#method-aggregator-set_parameters'><code>shinyHugePlot::aggregator$set_parameters()</code></a></span></li>
+</ul>
+</details>
+}}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-null_aggregator-new"></a>}}
 \if{latex}{\out{\hypertarget{method-null_aggregator-new}{}}}
 \subsection{Method \code{new()}}{
-Constructor that changes nothing.
+Constructor of the Aggregator.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{null_aggregator$new(...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{null_aggregator$new(
+  ...,
+  interleave_gaps,
+  coef_gap,
+  NA_position,
+  accepted_datatype
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{...}}{not used}
+\item{\code{interleave_gaps, coef_gap, NA_position, accepted_datatype, ...}}{Arguments pass to the constructor of \code{aggregator} object.}
 }
 \if{html}{\out{</div>}}
 }
@@ -48,17 +63,15 @@ Constructor that changes nothing.
 \if{html}{\out{<a id="method-null_aggregator-aggregate"></a>}}
 \if{latex}{\out{\hypertarget{method-null_aggregator-aggregate}{}}}
 \subsection{Method \code{aggregate()}}{
-Function where no aggregation will be executed.
+A function that does nothing other than inserting NAs.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{null_aggregator$aggregate(x, y, n_out = -1)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{null_aggregator$aggregate(...)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{x, y}}{Vectors.}
-
-\item{\code{n_out}}{Integer, omitted.}
+\item{\code{...}}{Arguments passed to \code{super$aggregate}.}
 }
 \if{html}{\out{</div>}}
 }
