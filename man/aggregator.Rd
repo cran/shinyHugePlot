@@ -34,7 +34,7 @@ Apply function for nanotime}
 \if{html}{\out{<a id="method-aggregator-new"></a>}}
 \if{latex}{\out{\hypertarget{method-aggregator-new}{}}}
 \subsection{Method \code{new()}}{
-Constructor of abstract_aggregator
+Constructor of \code{aggregator}
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{aggregator$new(
   ...,

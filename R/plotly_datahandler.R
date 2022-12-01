@@ -17,8 +17,8 @@
 #' @importFrom tidyr unnest pivot_wider
 #' @importFrom lazyeval f_eval
 #' @description
-#' A class for handling plotly data,
-#' which defines functions and be used in the downsampler class
+#' A class for handling \code{plotly} data,
+#' which defines functions used in the \code{downsampler} class
 
 # class decralation -------------------------------------------------------
 
@@ -32,7 +32,9 @@ plotly_datahandler <- R6::R6Class(
 
     # constructor ---------------------------------------------------------
     #' @description
-    #' Constructing an abstract down-sampler.
+    #' Constructing an instance.
+    #' The data contained in a \code{plotly} object (\code{figure} argument)
+    #' will be included in the instance (as a reference).
     #' @param figure \code{plotly} object.
     #' The traces of this object will be down-sampled.
     #' @param legend_options Named list, optional.
@@ -49,7 +51,7 @@ plotly_datahandler <- R6::R6Class(
     #' By default \code{Sys.timezone()}.
     #' @param use_light_build Boolean, optional.
     #' Whether \code{plotly_build_light} is used.
-    #' It quickly build scatter-type plotly data.
+    #' It quickly build scatter-type \code{plotly} data.
     #' By default, \code{TRUE}.
     #'
     initialize = function(
@@ -84,25 +86,33 @@ plotly_datahandler <- R6::R6Class(
       # before registering the data,
       # build the data of the figure
       if (is.null(figure)) {
-        figure <- plotly::plot_ly() %>% plotly_build_light()
-      } else if (is.null(figure$x$data)) {
-        if (use_light_build) {
-          figure <- plotly_build_light(figure)
-        } else {
-          message("building plotly data for the first time may take much time")
-          figure <- plotly::plotly_build(figure)
+        figure <- plotly::plot_ly(type = "scatter", mode = "lines") %>%
+          plotly_build() %>%
+          plotly::subplot()
+
+        figure$x$data <- list()
+
+      } else {
+        if (is.null(figure$x$data)) {
+          if (use_light_build) {
+            figure <- plotly_build_light(figure)
+          } else {
+            message("building plotly data for the first time may take much time")
+            figure <- plotly::plotly_build(figure)
+          }
         }
+
+        x_title <- figure$x$layout$xaxis$title
+        y_title <- figure$x$layout$yaxis$title
+
+        # note: this subplot may change the layout
+        figure <- plotly::subplot(
+          figure,
+          titleX = !is.null(x_title) && is.character(x_title),
+          titleY = !is.null(y_title) && is.character(y_title)
+        )
       }
 
-      x_title <- figure$x$layout$xaxis$title
-      y_title <- figure$x$layout$yaxis$title
-
-      # note: this subplot may change the layout
-      figure <- plotly::subplot(
-        figure,
-        titleX = !is.null(x_title) && is.character(x_title),
-        titleY = !is.null(y_title) && is.character(y_title)
-      )
 
       # convert the trace data to data frame
       # it will be registered after adjusting figure data,
@@ -118,7 +128,9 @@ plotly_datahandler <- R6::R6Class(
           ~.x[setdiff(names(.x), colnames(.y))]
           )
       } else if (nrow(traces_df) == 0) {
-        figure$x$data <- plotly::plotly_build(plotly::plot_ly())$x$data
+        figure$x$data <- plotly::plotly_build(
+          plotly::plot_ly(type = "scatter", mode = "lines")
+          )$x$data
       }
 
       # setting of the show legend
@@ -134,16 +146,18 @@ plotly_datahandler <- R6::R6Class(
     }, #end of initialization
 
     #' @description
-    #' Add or overwrite the data of the traces.
-    #' Before executing this function, \code{self$trace} must be registered.
-    #' @param ... Arguments constitute a plotly attribute, optional.
-    #' (e.g., \code{id}, \code{x}, \code{y},
-    #' \code{type}, \code{mode}).
-    #' Note that data will be built using \code{plotly_build_light}
-    #' if it is not built.
+    #' In the instance, data is contained as a data frame
+    #' (see \code{self$orig_data} for detailed information).
+    #' Using this method, the data can be added or overwritten.
+    #' If a data frame (\code{traces_df} argument) is given, it will be
+    #' added to \code{self$orig_data} or reassigned as \code{self$orig_data}.
+    #' If attributes to construct a \code{plotly} object (\code{...} argument)
+    #' are given, a data frame is constructed and used.
+    #' @param ... Arguments to constitute a \code{plotly} attributes, optional.
+    #' For instance, \code{x}, \code{y}, \code{type}, and \code{mode}
+    #' are applicable. See \code{plotly::plot_ly}.
     #' @param traces_df Data frame, optional.
-    #' Data frame that contains all the attributes of a plotly trace
-    #' in each row. See \code{self$orig_data} field.
+    #' Data frame whose format is agreed with \code{self$orig_data}.
     #' If \code{traces_df} is given, arguments in \code{...} are neglected.
     #' @param append Boolean, optional.
     #' Whether the data is append or overwrite. By default, \code{FALSE}
@@ -171,40 +185,44 @@ plotly_datahandler <- R6::R6Class(
       }
 
       # set figure xaxis
-      traces_axis <- private$traces_df %>%
-        dplyr::mutate(
-          xaxis_type = purrr::map_chr(
-            data,
-            ~if_else(inherits(.x$x, "nanotime"), "date", "linear")
-          )
-        ) %>%
-        dplyr::distinct(xaxis, xaxis_type) %>%
-        dplyr::group_by(xaxis) %>%
-        dplyr::mutate(cnt = dplyr::n()) %>%
-        dplyr::ungroup() %>%
-        dplyr::mutate(xaxis = stringr::str_replace(xaxis, "^x", "xaxis"))
+      if (nrow(traces_df) > 0) {
+        traces_axis <- private$traces_df %>%
+          dplyr::mutate(
+            xaxis_type = purrr::map_chr(
+              data,
+              ~if_else(inherits(.x$x, "nanotime"), "date", "linear")
+            )
+          ) %>%
+          dplyr::distinct(xaxis, xaxis_type) %>%
+          dplyr::group_by(xaxis) %>%
+          dplyr::mutate(cnt = dplyr::n()) %>%
+          dplyr::ungroup() %>%
+          dplyr::mutate(xaxis = stringr::str_replace(xaxis, "^x", "xaxis"))
 
-      if (any(traces_axis$cnt > 1)) {
-        warning("types of the x values are not consistent")
-        traces_axis <- dplyr::distinct(trace_axis, xaxis, .keep_all = TRUE)
+        if (any(traces_axis$cnt > 1)) {
+          warning("types of the x values are not consistent")
+          traces_axis <- dplyr::distinct(trace_axis, xaxis, .keep_all = TRUE)
+        }
+
+        args <- NULL
+        for (i in 1:nrow(traces_axis)) {
+          args[[traces_axis$xaxis[i]]][["type"]] <- traces_axis$xaxis_type[i]
+        }
+
+        self$figure <- do.call(plotly::layout, c(list(self$figure), args))
       }
-
-      args <- NULL
-      for (i in 1:nrow(traces_axis)) {
-        args[[traces_axis$xaxis[i]]][["type"]] <- traces_axis$xaxis_type[i]
-      }
-
-      self$figure <- do.call(plotly::layout, c(list(self$figure), args))
 
       invisible()
     },
 
 
     #' @description
-    #' Covert plotly data to data frame, with generating new uid
+    #' Covert the data contained in \code{plotly} object to a data frame.
+    #' A unique id (\code{uid}) is granted to each data.
+    #' The data frame will be returned.
     #' @param plotly_data List.
-    #' The elements are named list that represents plotly trace,
-    #' all of which must have \code{type}.
+    #' The list whose elements are named list representing \code{plotly} traces.
+    #' All elements must have elements named \code{type}.
     #' @param use_datatable Boolean.
     #' If it is \code{TRUE}, data such as \code{x} and \code{y} are nested
     #' in a \code{data.table}, of which key column is \code{x}.
@@ -355,10 +373,10 @@ plotly_datahandler <- R6::R6Class(
   ), # end of the public member
 
   active = list(
-    #' @field orig_data Data frame of the plotly traces.
+    #' @field orig_data Data frame representing \code{plotly} traces.
     orig_data = function() private$traces_df,
-    #' @field trace_df_default Data frame that represents default values
-    #' of the plotly traces.
+    #' @field trace_df_default Data frame representing default values
+    #' of \code{plotly} traces.
     #' \code{name} column represents the names of the attributes.
     #' \code{required} column represents whether the attributes are necessary
     #' to construct a data frame of a trace.

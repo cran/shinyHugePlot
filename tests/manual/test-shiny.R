@@ -1,98 +1,70 @@
-# Note that settings of `trace updater` should be changed
-# if you test the package using `pkgload::load_all`
-
+# sample data
 d <- tibble::tibble(
-  x = seq(0, 1e6),
-  t = nanotime::nanotime(Sys.time()) + seq(0, 1e6) * 7e4,
-  tp = Sys.time() + seq(0, 1e6) * 7,
+  x = seq(0, 1e5),
+  t = nanotime::nanotime(Sys.time()) + seq(0, 1e5) * 7e4,
+  tp = Sys.time() + seq(0, 1e5) * 7,
   tch = format(t, "%Y-%m-%d %H:%M:%E9S"),
-  y = (3 + sin(x / 200) + runif(1e6 + 1) / 10) * x / 1000
+  y = (3 + sin(x / 200) + runif(1e5 + 1) / 10) * x / 1000
 )
 
+# sample data with irregular gaps
+d_sep <- d[c(1, 5e3:1e4, 3e4:1e5),]
 
-d_sep <- d[c(1, 50:1e4, 3e4:1e5, (2e5+3e4):(8e5), 9e5:1e6),]
-
-# data downsampler
-
+# shiny app generation using different argument
 shiny_hugeplot(d$y)
 shiny_hugeplot(d)
-shiny_hugeplot(d_sep, aggregator = min_max_aggregator$new(interleave_gaps = T))
-shiny_hugeplot(d, aggregator = range_stat_aggregator$new(), n_out = 100)
-shiny_hugeplot(d, aggregator = range_stat_aggregator$new(y = NULL), n_out = 100)
-shiny_hugeplot(d_sep, aggregator = range_stat_aggregator$new(interleave_gaps = T), n_out = 100)
+shiny_hugeplot(plot_ly(x = d$x, y = d$y, type = "scatter", mode = "lines"))
+shiny_hugeplot(plot_ly(x = d$t, y = d$y, type = "scatter", mode = "lines")) # datetime layout will be automatically selected
+shiny_hugeplot(plot_ly(x = d$tp, y = d$y, type = "scatter", mode = "lines")) # datetime layout will be automatically selected
+shiny_hugeplot(plot_ly(x = d$tch, y = d$y, type = "scatter", mode = "lines")) # datetime layout will be automatically selected
+shiny_hugeplot(
+  downsampler$new(plot_ly(x = d$x, y = d$y, type = "scatter", mode = "lines"))
+  )
 
-# plotly downsampler
+# shiny app generation using different down-sampler
+shiny_hugeplot(d$y, aggregator = min_max_aggregator$new())
+shiny_hugeplot(d$y, aggregator = min_max_ovlp_aggregator$new())
+shiny_hugeplot(d$y, aggregator = LTTB_aggregator$new())
+shiny_hugeplot(d$y, aggregator = eLTTB_aggregator$new())
+shiny_hugeplot(d$y, aggregator = nth_pnt_aggregator$new())
+shiny_hugeplot(d$y, aggregator = range_stat_aggregator$new())
+shiny_hugeplot(d$y[1:1e4], aggregator = null_aggregator$new())
 
-plotly::plot_ly() %>%
-  add_trace(x = d$x, y = d$y, type = "scatter", mode = "lines") %>%
-  shiny_hugeplot()
+# shiny app generation with irregular gaps
+agg <- min_max_aggregator$new(interleave_gaps = T)
+d <- agg$aggregate(x = d_sep$x, y = d_sep$y, n_out = 1000)
+shiny_hugeplot(d_sep, aggregator = agg)
 
-
-plotly::plot_ly() %>%
-  add_trace(x = d$x, y = d$y, type = "scatter", mode = "lines") %>%
-  shiny_hugeplot(n_out = 100, aggregator = range_stat_aggregator)
-
-plotly::plot_ly() %>%
-  add_trace(x = d$t, y = d$y, type = "scatter", mode = "lines") %>%
-  layout(xaxis = list(type = "date")) %>%
-  shiny_hugeplot()
-
-fig <- plotly::plot_ly() %>%
-  add_trace(x = d_sep$x, y = d_sep$y, type = "scatter", mode = "lines")
-
-ds <- downsampler$new(fig, aggregator = range_stat_aggregator$new(interleave_gaps = T), n_out = 100)
-shiny_hugeplot(ds)
-
-
-# subplot downsampler
-
+# shiny app generation with subplots
 p1 <- plotly::plot_ly(
-  data = d[1:1e5, ], x = ~x, y = ~y,
+  data = d[1:5e4, ], x = ~x, y = ~y,
   name = "only this is named", type = "scatter", mode = "lines"
 ) %>%
   plotly_build_light()
 
 p2 <- plotly::plot_ly(
-  data = d[1e3 + 1:1e5, ], x = ~x, y = ~y,
+  data = d[1e4 + 1:5e4, ], x = ~x, y = ~y,
   type = "scatter", mode = "lines"
 )%>%
   plotly_build_light()
 
 p3 <- plotly::plot_ly(
-  data = d[2e3 + 1:1e5, ], x = ~x, y = ~y,
+  data = d[2e4 + 1:5e4, ], x = ~x, y = ~y,
   type = "scatter", mode = "lines"
 )%>%
   plotly_build_light()
 
 p4 <- plotly::plot_ly(
-  data = d[3e3 + 1:1e5, ], x = ~x, y = ~y,
+  data = d[3e4 + 1:5e4, ], x = ~x, y = ~y,
   type = "scatter", mode = "lines"
 )%>%
   plotly_build_light()
 
-ps <- subplot(p1, p2, p3, p4, nrows = 2)
+ps1 <- subplot(p1, p2, p3, p4, nrows = 2)
+ps2 <- subplot(p1, p2, p3, p4, nrows = 2, shareX = TRUE)
+ps3 <- subplot(p1, p2, p3, p4, nrows = 2) %>%
+  layout(xaxis = list(matches = "x4"))
 
-shiny_hugeplot(ps, n_out = 100)
-
-
-ds <- downsampler$new(ps)
-ds$orig_data
-ds$downsample_options
-ds$set_downsample_options(uid = ds$orig_data$uid[1], aggregator = range_stat_aggregator$new(), n_out = 100)
-ds$update_trace(reset = T)
-shiny_hugeplot(ds)
-
-# subplot downsampler (x axis is shared)
-
-ps <- subplot(p1, p2, p3, p4, nrows = 2, shareX = TRUE) %>%
-  shiny_hugeplot()
-
-# subplot downsampler (x axis is shared using `matches`)
-
-ps <- subplot(p1, p2, p3, p4, nrows = 2) %>%
-  layout(
-    xaxis = list(matches = "x4")
-  ) %>%
-  shiny_hugeplot()
-
-
+shiny_hugeplot(ps1)
+shiny_hugeplot(ps2)
+shiny_hugeplot(ps3)

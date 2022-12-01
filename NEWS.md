@@ -1,3 +1,8 @@
+# shinyHugePlot 0.2.2
+
+* Several bugs are fixed
+* Documents are updated
+
 # shinyHugePlot 0.2.1
 
 * Method to handle data inside the package was updated and the computational time was decreased

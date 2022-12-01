@@ -62,6 +62,8 @@ LTTB_aggregator <- R6::R6Class(
           fun_convert_x <- as.POSIXlt
         }
         x <- nanotime::as.nanotime(x)
+      } else {
+        convert_x <- FALSE
       }
 
 

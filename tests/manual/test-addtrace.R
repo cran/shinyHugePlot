@@ -15,8 +15,18 @@ ds <- downsampler$new()
 
 ds$figure
 
-ds$add_trace(x = d$x[1:10000], y = d$y[1:10000], type = "scatter", mode = "lines", name = "trace new", color = "orange")
-ds$add_trace(x = d$x[10001:20000], y = d$y[10001:20000], type = "scatter", mode = "lines", name = "trace new", color = "red", aggregator = range_stat_aggregator$new(), n_out = 100)
+ds$add_trace(
+  x = d$x[1:10000], y = d$y[1:10000],
+  type = "scatter", mode = "lines",
+  name = "trace new", color = I("orange")
+  )
+
+ds$add_trace(
+  x = d$x[10001:20000], y = d$y[10001:20000],
+  type = "scatter", mode = "lines",
+  name = "trace new2", color = I("red"),
+  aggregator = range_stat_aggregator$new(), n_out = 100
+  )
 
 ds$figure
 ds$update_trace(reset = TRUE)

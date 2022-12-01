@@ -9,14 +9,14 @@ An \code{R6::R6Class} object
 }
 \value{
 List of which elements represent the ranges.
-If there are no NAs, the length of the list is 1;
-multiple lists are obtained if there are NAs.
+If there are no \code{NA}s, the length of the list is 1;
+multiple lists are obtained if there are \code{NA}s.
 Each element of list has \code{x} and \code{y} values that surround
 the range of values.
 }
 \description{
-A super class for describing aggregators that returns x, y, ylwr and yupr
-values based on given x and y data.
+A super class for describing \code{aggregator} that returns \code{x}, \code{y},
+\code{ylwr} and \code{yupr} values based on given \code{x} and \code{y} data.
 }
 \section{Super class}{
 \code{shinyHugePlot::aggregator} -> \code{rng_aggregator}
@@ -65,7 +65,7 @@ Constructor of the Aggregator.
 \if{html}{\out{<a id="method-rng_aggregator-as_plotly_range"></a>}}
 \if{latex}{\out{\hypertarget{method-rng_aggregator-as_plotly_range}{}}}
 \subsection{Method \code{as_plotly_range()}}{
-Compute a plotly trace to illustrate the range of the data.
+Compute a \code{plotly} trace to illustrate the range of the data.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{rng_aggregator$as_plotly_range(x, y, ylwr, yupr, opacity = 0.5)}\if{html}{\out{</div>}}
 }
@@ -85,8 +85,8 @@ By default, 0.5.}
 \if{html}{\out{<a id="method-rng_aggregator-as_range"></a>}}
 \if{latex}{\out{\hypertarget{method-rng_aggregator-as_range}{}}}
 \subsection{Method \code{as_range()}}{
-Compute x, ylwr and yupr from a plotly trace made by
-\code{self$as_plotly_range}.
+Compute \code{x}, \code{ylwr} and \code{yupr} from a \code{plotly} trace
+made by \code{self$as_plotly_range}.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{rng_aggregator$as_range(prng)}\if{html}{\out{</div>}}
 }

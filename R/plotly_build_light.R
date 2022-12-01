@@ -1,4 +1,4 @@
-#' Build plotly data with low computation cost
+#' Build \code{plotly} data with low computation cost
 #'
 #' @importFrom dplyr %>% mutate filter across summarise bind_cols across
 #' @importFrom assertthat assert_that

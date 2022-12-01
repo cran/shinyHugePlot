@@ -8,26 +8,23 @@
 An \code{R6::R6Class} object
 }
 \description{
-A class for down-sampling the data.
-See the super class (\code{plotly_datahandler}) to find more members.
-Two options to make a \code{shiny} app: use \code{shiny_hugeplot} and
-make it by yourself.
-See the example.
+A class for down-sampling data with a large number of samples.
+An instance contains (the reference of) original data, layout of the figure,
+and options for aggregating the original data.
+An interactive plot for displaying large-sized data can be obtained using
+the figure, down-sampler and its options included in the instance,
+while making the plot using \code{shiny_hugeplot} function is easier (see examples).
+See the super class (\code{plotly_datahandler}) to find more members
+to handle the data in \code{plotly}.
 }
 \examples{
 \donttest{
 data(noise_fluct)
 
-# example 1: where shiny_hugeplot is employed
-# It is very easy
-# but customize is difficult and the computation cost might be high
+# example 1 : Easy method using shiny_hugeplot
 shiny_hugeplot(noise_fluct$time, noise_fluct$f500)
 
-# example 2: where user-defined shiny app is employed
-# a little complex
-# but any layout can be defined and the user can select the method
-# where the computation cost is lowest.
-
+# example 2 : Manual method using a downsampler object
 fig <- plot_ly(
   x = noise_fluct$time,
   y = noise_fluct$f500,
@@ -37,7 +34,10 @@ fig <- plot_ly(
   layout(xaxis = list(type = "date")) \%>\%
   shinyHugePlot::plotly_build_light()
 
-ds <- downsampler$new(figure = fig)
+ds <- downsampler$new(
+  figure = fig,
+  aggregator = min_max_aggregator$new(interleave_gaps = TRUE)
+)
 
 ui <- fluidPage(
   plotlyOutput(outputId = "hp", width = "800px", height = "600px")
@@ -63,12 +63,12 @@ shinyApp(ui = ui, server = server)
 \section{Active bindings}{
 \if{html}{\out{<div class="r6-active-bindings">}}
 \describe{
-\item{\code{downsample_options}}{Options for down-sampling the data
-set in this instance.}
+\item{\code{downsample_options}}{Options for aggregating (down-sampling) data
+registered in this instance.}
 
-\item{\code{n_out_default}}{Default sample size set in this instance.}
+\item{\code{n_out_default}}{Default sample size.}
 
-\item{\code{aggregator_default}}{Default aggregator set in this instance.}
+\item{\code{aggregator_default}}{Default aggregator instance.}
 }
 \if{html}{\out{</div>}}
 }
@@ -94,7 +94,15 @@ set in this instance.}
 \if{html}{\out{<a id="method-downsampler-new"></a>}}
 \if{latex}{\out{\hypertarget{method-downsampler-new}{}}}
 \subsection{Method \code{new()}}{
-Constructing an abstract down-sampler.
+To construct an instance, original data, layout of the figure, and options
+for aggregating the original data are necessary.
+The original data and the layout of the figure can be given by providing
+a \code{plotly} object (\code{figure} argument).
+The options for aggregating the original data can be given by providing
+an aggregator (\code{aggregator} argument) and the number of samples
+(\code{n_out} argument).
+See the constructor of the \code{plotly_datahandler} class for more
+information on other arguments.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{downsampler$new(
   figure = NULL,
@@ -128,9 +136,17 @@ By default, \code{min_max_aggregator$new()}.}
 \if{html}{\out{<a id="method-downsampler-add_trace"></a>}}
 \if{latex}{\out{\hypertarget{method-downsampler-add_trace}{}}}
 \subsection{Method \code{add_trace()}}{
-Add a trace to the plotly figure.
+Add a new series to the data registered in the instance.
+If a data frame (\code{traces_df} argument) compliant with
+\code{self$orig_data} is given, it will be added to \code{self$orig_data}.
+If attributes to construct a \code{plotly} object (\code{...} argument)
+are given, a data frame is constructed and added.
+Options for aggregating data can be set using
+\code{aggregator} and \code{n_out} arguments.
 It is a wrapper of \code{self$set_trace_data} and
-\code{self$set_downsample_options} and append a trace.
+\code{self$set_downsample_options}. See these methods for more information.
+Note that the traces of the figure are not updated with this method and
+\code{self$update_trace} is necessary.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{downsampler$add_trace(..., traces_df = NULL, n_out = NULL, aggregator = NULL)}\if{html}{\out{</div>}}
 }
@@ -149,8 +165,13 @@ It is a wrapper of \code{self$set_trace_data} and
 \if{html}{\out{<a id="method-downsampler-update_trace"></a>}}
 \if{latex}{\out{\hypertarget{method-downsampler-update_trace}{}}}
 \subsection{Method \code{update_trace()}}{
-Update traces (\code{self$figure$x$data}) according to
-the relayout order (\code{relayout_order}).
+Update traces of the figure registered in the instance
+(\code{self$figure$x$data}) according to
+re-layout order (\code{relayout_order} argument).
+Using \code{reset} and \code{reload} arguments, traces are updated
+without re-layout orders.
+It just registers the new traces and returns nothing by default.
+It returns the new traces if \code{send_trace} is \code{TRUE}.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{downsampler$update_trace(
   relayout_order = list(NULL),
@@ -164,11 +185,11 @@ the relayout order (\code{relayout_order}).
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{relayout_order}}{Named list.
-The list generated by \code{plotlyjs_relayout},
+A list generated by \code{plotlyjs_relayout},
 which is obtained using \code{plotly::event_data}.
 e.g.,
 If you would like set the range of the 2nd x axis to [10.0, 21.5],
-\code{list(xaxis2.range[0] = 10.0, xaxis2.range[1] = 21.5)}.
+\code{list(`xaxis2.range[0]` = 10.0, `xaxis2.range[1]` = 21.5)}.
 If you would like reset the range of the 1st x axis,
 \code{list(xaxis.autorange = TRUE, xaxis.showspike = TRUE)}.}
 
@@ -195,7 +216,9 @@ By default, \code{FALSE}.}
 \if{html}{\out{<a id="method-downsampler-set_downsample_options"></a>}}
 \if{latex}{\out{\hypertarget{method-downsampler-set_downsample_options}{}}}
 \subsection{Method \code{set_downsample_options()}}{
-Set the options for aggregating the traces.
+In the instance, options for aggregating data are registered as data frame.
+(see \code{self$downsample_options}.)
+Using this method, the options can be set.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{downsampler$set_downsample_options(uid = NULL, n_out = NULL, aggregator = NULL)}\if{html}{\out{</div>}}
 }
@@ -205,7 +228,7 @@ Set the options for aggregating the traces.
 \describe{
 \item{\code{uid}}{Character, optional.
 The unique id of the trace.
-If \code{NULL}, all the ids registered in this instance is used.
+If \code{NULL}, all the options registered in this instance are updated.
 By default, \code{NULL}.}
 
 \item{\code{n_out}}{Numeric or integer, optional.

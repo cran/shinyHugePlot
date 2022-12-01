@@ -13,7 +13,7 @@ aggregator <- R6::R6Class(
   public = list(
 
     #' @description
-    #' Constructor of abstract_aggregator
+    #' Constructor of \code{aggregator}
     #' @param ... Not used.
     #' @param interleave_gaps,NA_position,coef_gap,accepted_datatype
     #' Arguments passed to \code{self$set_parameters}, optional.

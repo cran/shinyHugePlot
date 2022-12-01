@@ -2,7 +2,7 @@
 % Please edit documentation in R/plotly_build_light.R
 \name{plotly_build_light}
 \alias{plotly_build_light}
-\title{Build plotly data with low computation cost}
+\title{Build \code{plotly} data with low computation cost}
 \usage{
 plotly_build_light(fig, vars_hf = c("x", "y", "text", "hovertext"))
 }

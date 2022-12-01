@@ -8,7 +8,7 @@
 #' and find the maximum and minimum values of each.
 #' Note that many samples may be replaced with \code{NA},
 #' if \code{interleave_gaps = TRUE} and the original data is increased or decreased
-#' monotonically. Use \code{min_max_ovlp_aggregator} instead of this class.
+#' monotonically. Use \code{min_max_ovlp_aggregator} instead in that case.
 #' \code{n_out} must be even number.
 #' @examples
 #' data(noise_fluct)

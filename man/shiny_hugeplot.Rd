@@ -3,11 +3,12 @@
 \name{shiny_hugeplot}
 \alias{shiny_hugeplot}
 \alias{shiny_hugeplot.default}
+\alias{shiny_hugeplot.character}
 \alias{shiny_hugeplot.matrix}
 \alias{shiny_hugeplot.data.frame}
 \alias{shiny_hugeplot.plotly}
 \alias{shiny_hugeplot.downsampler}
-\title{Wrapper for plotting large-sized data using shiny and plotly}
+\title{Wrapper for plotting large-sized data using \code{shinyHugePlot}}
 \usage{
 shiny_hugeplot(obj, ...)
 
@@ -22,6 +23,22 @@ shiny_hugeplot(obj, ...)
   n_out = 1000L,
   run_shiny = TRUE,
   downsampler_options = list(),
+  shiny_options = list(),
+  width = "100\%",
+  height = "600px",
+  ...
+)
+
+\method{shiny_hugeplot}{character}(
+  obj = NULL,
+  n_out = 1000L,
+  aggregator = min_max_aggregator$new(),
+  run_shiny = TRUE,
+  use_light_build = TRUE,
+  fread_options = list(),
+  downsampler_options = list(),
+  plotly_options = list(type = "scatter", mode = "lines"),
+  plotly_layout_options = list(),
   shiny_options = list(),
   width = "100\%",
   height = "600px",
@@ -82,37 +99,42 @@ shiny_hugeplot(obj, ...)
 )
 }
 \arguments{
-\item{obj}{Numeric vector, nanotime vector, numeric matrix, data.frame,
-or plotly object.
-If a numeric vector is given, it is used as the y values of the figure.
-the x values are calculated by \code{seq_along(obj)}.
-If you use \code{y} argument together, this argument is interpreted as
-the x values of the figure.
-If a nanotime vector is given, it is used as the x values of the figure.
-You must also give \code{y} argument, which will be used as the y values.
-Regarding \code{nanotime}, see the \code{nanotime} package.
-If a numeric matrix is given, the first and second column values are used
-as the x and y values. (The matrix must have more than 2 columns.)
-If a data.frame is given, \code{x} and \code{y} columns are used as the
-x and y values. If the class of the \code{x} column is \code{nanotime},
-the date type will be applied to the x axis.
-The data.frame must have columns named x and y.
-If a plotly object is given, it will be displayed.}
+\item{obj}{Numeric/\code{nanotime}/\code{POSIXt} vector,
+numeric matrix, data.frame, single character string,
+\code{plotly} object, or \code{downsampler} object.
+If a numeric vector is given, it will be used as y values of the figure
+of the \code{shiny} application
+(the x values are calculated by \code{seq_along(obj)}).
+It will be interpreted as the x values if you use \code{y} argument together.
+If a \code{nanotime} (see \code{nanotime} package) vector is given,
+it will be used as the x values (\code{y} argument is mandatory).
+If a numeric matrix is given, which must have more than 2 columns,
+the first and second column values will be used as the x and y values.
+If a data frame is given,
+which must have columns named \code{x} and \code{y},
+these columns will be used as the x and y values.
+If a single character string is given, it will be used as a file path
+to obtain a data frame
+(data frame will be loaded using \code{data.table::fread}).
+If a \code{plotly} object is given, the data and layout of it will be used
+for constructing the figure of the \code{shiny} application.
+If a \code{downsampler} object is given, the data, layout, and
+down-sampling options for aggregating original data of it will be used for
+constructing \code{shiny} application.}
 
 \item{...}{Not used.}
 
 \item{y}{Numeric vector, optional.
-The y values of the figure.
-It is required if the \code{obj} argument is used as x values of the figure.}
+y values of the figure of \code{shiny} application,
+which is required if the \code{obj} argument is used as the x values.}
 
 \item{tz}{Timezone, optional.
-It is used to convert the nanotime to the time displayed in the figure.
-It is used if the class of the \code{obj} argument is nanotime.
+It is used to convert the \code{nanotime} to the time displayed in the figure.
 By default, \code{Sys.timezone()}.}
 
 \item{use_light_build}{Boolean, optional.
-Whether a light version of the plotly data builder
-(\code{plotly_data_light}) implemented in this package is used.
+Whether \code{shinyHugePlot::plotly_build_light} will be used.
+(if \code{FALSE}, \code{plotly::plotly_build} will be used)
 By default, \code{TRUE}.}
 
 \item{plotly_options}{Named list, optional.
@@ -121,22 +143,21 @@ Arguments passed to \code{plotly::plot_ly}.}
 \item{plotly_layout_options}{Named list, optional.
 Arguments passed to \code{plotly::layout}.}
 
-\item{aggregator}{R6 class for the aggregation, optional.
-Select an aggregation function. The list of the functions are obtained
-using \code{list_aggregators}.
+\item{aggregator}{Instance of R6 classes for aggregating data, optional.
+The classes can be listed using \code{list_aggregators}.
 By default, \code{min_max_aggregator$new()}.}
 
 \item{n_out}{Integer, optional.
 Number of samples get by the down-sampling. By default, 1000.}
 
 \item{run_shiny}{Boolean, optional.
-whether a generated shiny app will be run immediately.
+whether a generated \code{shiny} application will be launched.
 By default, \code{TRUE}.}
 
 \item{downsampler_options}{Named list, optional.
-Arguments passed to \code{shiny_downsampler$new}, other than
-\code{aggregator} and \code{n_shown_samples}.
-To set these arguments, use \code{aggregator} and \code{n_out} arguments.}
+Arguments passed to \code{downsampler$new}.
+Note that use \code{aggregator} and \code{n_out} arguments
+if you want to set these arguments.}
 
 \item{shiny_options}{Named list, optional.
 Arguments passed to \code{shinyApp} function.}
@@ -144,13 +165,22 @@ Arguments passed to \code{shinyApp} function.}
 \item{width, height}{Character, optional.
 Arguments passed to \code{plotlyOutput}.
 By default, \code{100\%} and \code{600px}.}
+
+\item{fread_options}{Named list, optional.
+Arguments passed to \code{data.table::fread},
+which is used if a single character string is given as the \code{obj}.}
 }
 \description{
-This S3 class function is a wrapper to plot the large-sized data.
-It employs an R6 \code{shiny_downsampler} instance to obtain data samples
-using a specified aggregation method that is defined in the instance.
-The figure will be updated interactively according to the x-range
-that user select manually in the shiny app.
+This is a S3 class function to easily plot large-sized data using
+\code{downsampler} object including \code{plotly} and
+\code{shiny} application.
+Using data that is given as a first argument,
+\code{shiny} application will be constructed and (by default,) executed.
+As the first argument, many classes are applicable,
+ranging from a numeric vector representing y values
+to a \code{downsampler} object containing
+original data, layout of the figure and
+options for aggregating the original data.
 }
 \examples{
 \donttest{

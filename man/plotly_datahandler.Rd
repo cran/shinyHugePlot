@@ -8,8 +8,8 @@
 An \code{R6::R6Class} object
 }
 \description{
-A class for handling plotly data,
-which defines functions and be used in the downsampler class
+A class for handling \code{plotly} data,
+which defines functions used in the \code{downsampler} class
 }
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
@@ -21,10 +21,10 @@ which defines functions and be used in the downsampler class
 \section{Active bindings}{
 \if{html}{\out{<div class="r6-active-bindings">}}
 \describe{
-\item{\code{orig_data}}{Data frame of the plotly traces.}
+\item{\code{orig_data}}{Data frame representing \code{plotly} traces.}
 
-\item{\code{trace_df_default}}{Data frame that represents default values
-of the plotly traces.
+\item{\code{trace_df_default}}{Data frame representing default values
+of \code{plotly} traces.
 \code{name} column represents the names of the attributes.
 \code{required} column represents whether the attributes are necessary
 to construct a data frame of a trace.
@@ -49,7 +49,9 @@ if no values are assigned.
 \if{html}{\out{<a id="method-plotly_datahandler-new"></a>}}
 \if{latex}{\out{\hypertarget{method-plotly_datahandler-new}{}}}
 \subsection{Method \code{new()}}{
-Constructing an abstract down-sampler.
+Constructing an instance.
+The data contained in a \code{plotly} object (\code{figure} argument)
+will be included in the instance (as a reference).
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{plotly_datahandler$new(
   figure = NULL,
@@ -83,7 +85,7 @@ By default \code{Sys.timezone()}.}
 
 \item{\code{use_light_build}}{Boolean, optional.
 Whether \code{plotly_build_light} is used.
-It quickly build scatter-type plotly data.
+It quickly build scatter-type \code{plotly} data.
 By default, \code{TRUE}.}
 }
 \if{html}{\out{</div>}}
@@ -93,8 +95,13 @@ By default, \code{TRUE}.}
 \if{html}{\out{<a id="method-plotly_datahandler-set_trace_data"></a>}}
 \if{latex}{\out{\hypertarget{method-plotly_datahandler-set_trace_data}{}}}
 \subsection{Method \code{set_trace_data()}}{
-Add or overwrite the data of the traces.
-Before executing this function, \code{self$trace} must be registered.
+In the instance, data is contained as a data frame
+(see \code{self$orig_data} for detailed information).
+Using this method, the data can be added or overwritten.
+If a data frame (\code{traces_df} argument) is given, it will be
+added to \code{self$orig_data} or reassigned as \code{self$orig_data}.
+If attributes to construct a \code{plotly} object (\code{...} argument)
+are given, a data frame is constructed and used.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{plotly_datahandler$set_trace_data(..., traces_df = NULL, append = FALSE)}\if{html}{\out{</div>}}
 }
@@ -102,14 +109,12 @@ Before executing this function, \code{self$trace} must be registered.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{...}}{Arguments constitute a plotly attribute, optional.
-(e.g., \code{id}, \code{x}, \code{y},
-\code{type}, \code{mode}).
-Note that un-build data will be built by \code{plotly_build}.}
+\item{\code{...}}{Arguments to constitute a \code{plotly} attributes, optional.
+For instance, \code{x}, \code{y}, \code{type}, and \code{mode}
+are applicable. See \code{plotly::plot_ly}.}
 
 \item{\code{traces_df}}{Data frame, optional.
-Data frame that contains all the attributes of a plotly trace
-in each row. See \code{self$orig_data} field.
+Data frame whose format is agreed with \code{self$orig_data}.
 If \code{traces_df} is given, arguments in \code{...} are neglected.}
 
 \item{\code{append}}{Boolean, optional.
@@ -123,7 +128,9 @@ Whether the data is append or overwrite. By default, \code{FALSE}
 \if{html}{\out{<a id="method-plotly_datahandler-plotly_data_to_df"></a>}}
 \if{latex}{\out{\hypertarget{method-plotly_datahandler-plotly_data_to_df}{}}}
 \subsection{Method \code{plotly_data_to_df()}}{
-Covert plotly data to data frame, with generating new uid
+Covert the data contained in \code{plotly} object to a data frame.
+A unique id (\code{uid}) is granted to each data.
+The data frame will be returned.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{plotly_datahandler$plotly_data_to_df(plotly_data, use_datatable = TRUE)}\if{html}{\out{</div>}}
 }
@@ -132,12 +139,12 @@ Covert plotly data to data frame, with generating new uid
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{plotly_data}}{List.
-The elements are named list that represents plotly trace,
-all of which must have \code{type}.}
+The list whose elements are named list representing \code{plotly} traces.
+All elements must have elements named \code{type}.}
 
 \item{\code{use_datatable}}{Boolean.
 If it is \code{TRUE}, data such as \code{x} and \code{y} are nested
-in a \code{data.table}, of which key colomn is \code{x}.
+in a \code{data.table}, of which key column is \code{x}.
 By default, \code{TRUE}.}
 }
 \if{html}{\out{</div>}}

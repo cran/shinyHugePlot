@@ -74,29 +74,30 @@ d_long <- tidyr::pivot_longer(d, cols = -c(x, t))
 
 ### Easy example
 
-Here is the easiest example.
+The following example is the easiest.
 
 ``` r
 library(shinyHugePlot)
-shiny_hugeplot(d$x, d$y1)
+shiny_hugeplot(d$y1)
 ```
 
-Time-series data can also be employed.
+`shiny_hugeplot` can also take x and y values. Numeric x and datetime x
+are applicable.
 
 ``` r
 shiny_hugeplot(d$t, d$y1)
 ```
 
 A shiny app will be running in the R-studio viewer. The original data
-has 1e6 samples while only 1e3 samples (default) are shown to reduce the
-processing time. Try zooming up the plot and confirm that more samples
-are shown according to the zoom.
+has 1e6 samples while only 1e3 samples (default) are shown to reduce
+computational time. Try zooming up the plot (using plotly interfaces)
+and confirm that more samples are displayed according to the operation.
 
-Note that how much the samples are down-sampled are shown in the
-legends. For example, the legend name of `[R] trace 1 ~1.0K` means that
+Note that a rough explanation about down-sampling is displayed in the
+legends. For example, the legend name of `[S] trace 1 ~1.0K` means that
 the name of the displayed series is “trace 1” and that one sample is
-generated for every 1.0K (= 1000) samples using a particular
-down-sampling algorithm.
+generated for every 1.0K (= 1000) samples using a specific down-sampling
+algorithm.
 
 ### Plotly example
 
@@ -112,9 +113,9 @@ fig <- plot_ly() %>%
 shiny_hugeplot(fig)
 ```
 
-It is noted that building plotly data indicates high computation cost.
-For instance, try an example below (in the author’s environment, it
-takes approx 30 secs):
+You should note that building plotly data may require a large amount of
+computational time. For instance, an example below requires 30 secs in
+the author’s environment.
 
 ``` r
 system.time({
@@ -128,8 +129,8 @@ system.time({
   })
 ```
 
-it is improved by the following function (in the author’s environment,
-it takes approx 0.3 secs):
+it is improved by a `plotly_build_light` function (in the author’s
+environment, it takes approx 0.3 secs):
 
 ``` r
 system.time({
@@ -142,7 +143,7 @@ system.time({
   })
 ```
 
-Or formula can be employed,
+Formula can also be applied,
 
 ``` r
 system.time({
@@ -155,15 +156,15 @@ system.time({
   })
 ```
 
-Then, run shiny app with the built plotly figure.
+Creating a shiny app is easily done with `shiny_hugeplot` and the plotly
+object.
 
 ``` r
 shiny_hugeplot(fig_b)
 ```
 
-In addition to a normal plot, subplot is also supported. Note that
-applying `plotly_build_light` before subplot reduces time for
-computation.
+Multiple series is also supported. Note that applying
+`plotly_build_light` before subplot reduces time for computation.
 
 ``` r
 d1 <- dplyr::filter(d_long, name %in% c("y1", "y2"))
