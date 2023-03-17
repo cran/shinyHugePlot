@@ -55,6 +55,34 @@ server <- function(input, output, session) {
 
 shinyApp(ui = ui, server = server)
 
+
+# example 3 : Add another series of which aggregator is different
+
+noise_events <- tibble(
+  time = c("2022-11-09 12:25:50", "2022-11-09 12:26:14"),
+  level = c(60, 60)
+)
+
+ds$add_trace(
+  x = noise_events$time, y = noise_events$level, name = "event",
+  type = "scatter", mode = "markers",
+  aggregator = null_aggregator$new()
+)
+ds$update_trace(reset = TRUE)
+
+server <- function(input, output, session) {
+
+  output$hp <- renderPlotly(ds$figure)
+
+  observeEvent(plotly::event_data("plotly_relayout"),{
+    updatePlotlyH(session, "hp", plotly::event_data("plotly_relayout"), ds)
+  })
+
+}
+
+shinyApp(ui = ui, server = server)
+
+
 }
 }
 \section{Super class}{
@@ -154,7 +182,8 @@ Note that the traces of the figure are not updated with this method and
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{..., traces_df}}{Arguments passed to \code{self$set_trace_data}}
+\item{\code{..., traces_df}}{Arguments passed to \code{self$set_trace_data}
+(see the super class of \code{plotly_datahandler})}
 
 \item{\code{n_out, aggregator}}{Arguments passed to \code{self$set_downsample_options}.}
 }

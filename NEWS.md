@@ -1,3 +1,9 @@
+# shinyHugePlot 0.2.3
+
+* A bug in the UI of `shiny_hugeplot` was fixed
+* A bug in `plotly_build_light` was fixed
+* Documents are updated
+
 # shinyHugePlot 0.2.2
 
 * Several bugs are fixed

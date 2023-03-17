@@ -391,7 +391,7 @@ shiny_hugeplot.downsampler <- function(
 
     output[["get_data"]] <- downloadHandler(
       filename = function() {
-        paste0(basename(tempfile("")), ".csv")
+        paste0(basename(tempfile("")), ".json")
       },
       content = function(file) {
         traces_df <- ds$plotly_data_to_df(
@@ -399,7 +399,9 @@ shiny_hugeplot.downsampler <- function(
         ) %>%
           dplyr::left_join(ds$downsample_options, by = "uid") %>%
           dplyr::select(
-            tidyselect::vars_select_helpers$where(!inherits("R6"))
+            tidyselect::vars_select_helpers$where(
+              function(x) !inherits(x, "R6")
+            )
           ) %>%
           # dplyr::select(-aggregator_inst) %>%
           dplyr::mutate(

@@ -57,49 +57,61 @@ plotly_build_light <- function(
   assertthat::assert_that(inherits(fig$x$attrs, "list"))
   assertthat::assert_that(!is.null(names(fig$x$attrs)))
 
-  # evaluate the trace, if necessary
-  traces_div <- fig$x$attrs %>%
+  # just do plotly_build if the data is not large
+  n_x <- fig$x$attrs %>%
     purrr::discard(~is.null(.x$type) || is.na(.x$type)) %>%
-    purrr::imodify(
-      function(trace, uid) {
-        trace_eval <- purrr::modify_if(
-          trace,
-          lazyeval::is_formula,
-          ~lazyeval::f_eval(.x, plotly::plotly_data(fig, uid))
-        )
+    purrr::map_int(~length(.x$x)) %>%
+    max()
 
-        attrs_length <- purrr::map_int(trace_eval, length)
-        vars_long   <- names(trace_eval[attrs_length == attrs_length["x"]])
+  if (n_x > 1e3) {
 
-        data_long <- trace_eval[vars_long] %>%
-          data.table::setDT() %>%
-          .[,lapply(.SD, list), by = setdiff(vars_long, vars_hf)]
+    # evaluate the trace, if necessary
+    traces_div <- fig$x$attrs %>%
+      purrr::discard(~is.null(.x$type) || is.na(.x$type)) %>%
+      purrr::imodify(
+        function(trace, uid) {
+          trace_eval <- purrr::modify_if(
+            trace,
+            lazyeval::is_formula,
+            ~lazyeval::f_eval(.x, plotly::plotly_data(fig, uid))
+          )
 
-        trace_data <- purrr::pmap(
-          data_long,
-          function(...) {
-            c(trace[setdiff(names(trace), vars_long)], list(...))
-          }
-        )
+          attrs_length <- purrr::map_int(trace_eval, length)
 
-        return(trace_data)
-      }
-    ) %>%
-    unlist(recursive = FALSE)
+          vars_long   <- names(trace_eval[attrs_length == attrs_length["x"]])
 
-  # replace attributes with the ones without high frequency data
-  # then build it
-  fig$x$attrs <- purrr::map(
-    traces_div,
-    ~.x[setdiff(names(.x), vars_hf)]
-  )
-  fig_built <- plotly::plotly_build(fig)
+          data_long <- trace_eval[vars_long] %>%
+            data.table::setDT() %>%
+            .[,lapply(.SD, list), by = setdiff(vars_long, vars_hf)]
 
-  # directly input the high frequency data to the plotly data
-  fig_built$x$data <- purrr::map2(
-    fig_built$x$data, traces_div,
-    ~c(.x, .y[intersect(names(.y), vars_hf)])
-  )
+          trace_data <- purrr::pmap(
+            data_long,
+            function(...) {
+              c(trace[setdiff(names(trace), vars_long)], list(...))
+            }
+          )
+
+          return(trace_data)
+        }
+      ) %>%
+      unlist(recursive = FALSE)
+
+    # replace attributes with the ones without high frequency data
+    # then build it
+    fig$x$attrs <- purrr::map(
+      traces_div,
+      ~.x[setdiff(names(.x), vars_hf)]
+    )
+    fig_built <- plotly::plotly_build(fig)
+
+    # directly input the high frequency data to the plotly data
+    fig_built$x$data <- purrr::map2(
+      fig_built$x$data, traces_div,
+      ~c(.x, .y[intersect(names(.y), vars_hf)])
+    )
+  } else {
+    fig_built <- plotly_build(fig)
+  }
 
   return(fig_built)
 }

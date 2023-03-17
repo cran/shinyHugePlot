@@ -213,6 +213,27 @@ server <- function(input, output, session) {
 shinyApp(ui = ui, server = server)
 ```
 
+Another series can be added using `add_trace` method registered in
+`downsampler` instance. By setting `null_aggregator`, all values are
+plotted in the figure. However, it is not plotted when the sample size
+is just 1, of which reason is under investigation.
+
+``` r
+fig <- plot_ly(x = d$x, y = d$y1, type = "scatter", mode = "lines") 
+
+ds <- downsampler$new(figure = fig)
+ds$add_trace(
+  x = c(1e4,2e4,3e4), y = c(1000, 1000,1000), 
+  type = "scatter", mode = "markers", 
+  marker = list(color = "red"),
+  aggregator = null_aggregator$new()
+  )
+
+ds$update_trace(reload = T)
+
+shiny_hugeplot(ds)
+```
+
 ### Example for changing the aggregator
 
 The down-sampling is, by default, done with the local minimum and
@@ -222,8 +243,13 @@ another down-sample method with the user interface given by
 follows:
 
 ``` r
-fig <- plot_ly(x = d$x, y = d$y, type = "scatter", mode = "lines") 
-shiny_hugeplot(fig, n_out = 100, aggregator = range_stat_aggregator)
+fig <- plot_ly(x = d$x, y = d$y1, type = "scatter", mode = "lines") 
+shiny_hugeplot(fig, n_out = 100, aggregator = range_stat_aggregator$new())
+```
+
+``` r
+fig <- plot_ly(x = d$x, y = d$y1, type = "scatter", mode = "lines") 
+shiny_hugeplot(fig, aggregator = eLTTB_aggregator$new())
 ```
 
 ## LICENSE
