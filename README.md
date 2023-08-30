@@ -156,8 +156,8 @@ system.time({
   })
 ```
 
-Creating a shiny app is easily done with `shiny_hugeplot` and the plotly
-object.
+Creating a shiny app is easily done with `shiny_hugeplot` and the
+`plotly` object.
 
 ``` r
 shiny_hugeplot(fig_b)

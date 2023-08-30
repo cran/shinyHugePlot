@@ -23,14 +23,24 @@
 #' It it is \code{TRUE}, the figure will be updated even if
 #' \code{relayout_order} is \code{NULL}.
 #' The ranges of x axes are preserved.
+#' @param verbose Boolean.
+#' Whether detailed messages to check the procedures are shown. By default, \code{FALSE}.
+#'
 #' @export
 #'
 updatePlotlyH <- function(
     session, outputId, relayout_order, ds_obj,
-    reset = FALSE, reload = FALSE
+    reset = FALSE, reload = FALSE, verbose = FALSE
     ) {
 
+  if (verbose) {
+    message("Check the data type of the downsampler object (updatePlotlyH)")
+  }
   assertthat::assert_that(inherits(ds_obj, "downsampler"))
+
+  if (verbose) {
+    message("Get updated traces using downsampler$update_trace (updatePlotlyH)")
+  }
 
   trace_update_order <- ds_obj$update_trace(
     relayout_order = relayout_order,
@@ -38,6 +48,11 @@ updatePlotlyH <- function(
     )
 
   if (!is.null(trace_update_order) && length(trace_update_order$new_trace) > 0) {
+
+    if (verbose) {
+      message("Updated the traces using plotlyProxy (updatePlotlyH)")
+    }
+
     plotlyProxy(outputId, session) %>%
       plotlyProxyInvoke(
         "deleteTraces", unique(trace_update_order$trace_idx_update) - 1
@@ -46,5 +61,10 @@ updatePlotlyH <- function(
         "addTraces",
         trace_update_order$new_trace
       )
+  } else {
+
+    if (verbose) {
+      message("The update was NULL (updatePlotlyH)")
+    }
   }
 }

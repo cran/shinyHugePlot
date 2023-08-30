@@ -10,7 +10,8 @@ updatePlotlyH(
   relayout_order,
   ds_obj,
   reset = FALSE,
-  reload = FALSE
+  reload = FALSE,
+  verbose = FALSE
 )
 }
 \arguments{
@@ -37,6 +38,9 @@ The ranges of x axes are reset (initialized).}
 It it is \code{TRUE}, the figure will be updated even if
 \code{relayout_order} is \code{NULL}.
 The ranges of x axes are preserved.}
+
+\item{verbose}{Boolean.
+Whether detailed messages to check the procedures are shown. By default, \code{FALSE}.}
 }
 \description{
 It is used by registering in a \code{shiny} application.

@@ -26,6 +26,7 @@ shiny_hugeplot(obj, ...)
   shiny_options = list(),
   width = "100\%",
   height = "600px",
+  verbose = FALSE,
   ...
 )
 
@@ -42,6 +43,7 @@ shiny_hugeplot(obj, ...)
   shiny_options = list(),
   width = "100\%",
   height = "600px",
+  verbose = FALSE,
   ...
 )
 
@@ -57,6 +59,7 @@ shiny_hugeplot(obj, ...)
   shiny_options = list(),
   width = "100\%",
   height = "600px",
+  verbose = FALSE,
   ...
 )
 
@@ -73,6 +76,7 @@ shiny_hugeplot(obj, ...)
   shiny_options = list(),
   width = "100\%",
   height = "600px",
+  verbose = FALSE,
   ...
 )
 
@@ -86,6 +90,7 @@ shiny_hugeplot(obj, ...)
   shiny_options = list(),
   width = "100\%",
   height = "600px",
+  verbose = FALSE,
   ...
 )
 
@@ -95,6 +100,7 @@ shiny_hugeplot(obj, ...)
   shiny_options = list(),
   width = "100\%",
   height = "600px",
+  verbose = FALSE,
   ...
 )
 }
@@ -165,6 +171,9 @@ Arguments passed to \code{shinyApp} function.}
 \item{width, height}{Character, optional.
 Arguments passed to \code{plotlyOutput}.
 By default, \code{100\%} and \code{600px}.}
+
+\item{verbose}{Boolean.
+Whether detailed messages to check the procedures are shown. By default, \code{FALSE}.}
 
 \item{fread_options}{Named list, optional.
 Arguments passed to \code{data.table::fread},

@@ -1,3 +1,7 @@
+# shinyHugePlot 0.2.4
+
+* A bug at the close zoom level (duplication of the traces) was fixed
+
 # shinyHugePlot 0.2.3
 
 * A bug in the UI of `shiny_hugeplot` was fixed

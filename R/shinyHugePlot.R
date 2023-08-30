@@ -8,4 +8,4 @@
 #' @docType package
 #' @import plotly
 #' @import shiny
-NULL
+"_PACKAGE"

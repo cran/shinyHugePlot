@@ -120,6 +120,8 @@ downsampler <- R6::R6Class(
     #' Select an aggregation function. The list of the functions are obtained
     #' using \code{list_aggregators}.
     #' By default, \code{min_max_aggregator$new()}.
+    #' @param verbose Boolean.
+    #' Whether detailed messages to check the procedures are shown. By default, \code{FALSE}.
     #'
     initialize = function(
       figure = NULL,
@@ -132,7 +134,8 @@ downsampler <- R6::R6Class(
         name_suffix  = "",
         xdiff_prefix = '<i style="color:#fc9944"> ~',
         xdiff_suffix = "</i>"
-      )
+      ),
+      verbose = F
     ) {
 
       # register the data
@@ -155,6 +158,9 @@ downsampler <- R6::R6Class(
       self$set_downsample_options()
       # set the initial data
       self$update_trace(reset = TRUE)
+
+      # set the verbose
+      private$verbose <- verbose
 
       invisible()
 
@@ -222,38 +228,49 @@ downsampler <- R6::R6Class(
         reset = FALSE, reload = FALSE, send_trace = FALSE
     ) {
 
-      # check arguments
+      # check wheather the relayout order is NULL
+      private$vbmsg("Check if the relayout order is not NULL (downsampler$update_trace)")
       if (is.null(relayout_order)) return()
+
+      # check arguments data types
+      private$vbmsg("Check the data types of the arguments (downsampler$update_trace)")
       assertthat::assert_that(inherits(relayout_order, "list"))
       assertthat::assert_that(inherits(reset, "logical"))
       assertthat::assert_that(inherits(reload, "logical"))
       assertthat::assert_that(inherits(send_trace, "logical"))
 
-      # stop if the order is NULL and no reset or reload
-      if (is.null(relayout_order[[1]]) && !reset && !reload) return()
+      # if the order is neither reset nor reload...
+      private$vbmsg("Check the order is 'reset' or 'reload' (downsampler$update_trace)")
+      if (!reset && !reload) {
+        # stop if the order is NULL and no reset or reload
+        private$vbmsg("Ther order is neither 'reset' nor 'reload' (downsampler$update_trace)")
+        private$vbmsg("Check if the content of the relayout order is not NULL (downsampler$update_trace)")
+        if (is.null(relayout_order[[1]])) return()
 
-      # if there are no x-axis order and no reset or reload, stop here
-      if (
-        !any(stringr::str_detect(names(relayout_order), "^xaxis")) &&
-        !reset && !reload
-        ) {
-        return()
+        # if there are no x-axis order and no reset or reload, stop here
+        private$vbmsg("Check if the `xaxis` is contained in the order (downsampler$update_trace)")
+        if (!any(stringr::str_detect(names(relayout_order), "^xaxis"))) return()
       }
 
       # compute relayout_order_df
+      private$vbmsg("Set the data frame of the relayout order using private$relayout_order_to_df (downsampler$update_trace)")
       relayout_order_df <- private$relayout_order_to_df(
         relayout_order = relayout_order,
         reset = reset, reload = reload
         )
 
       # if the relayout_order_df is null, stop here
+      private$vbmsg("Check if the relayout order is not NULL (downsampler$update_trace)")
       if (is.null(relayout_order_df) || nrow(relayout_order_df) == 0) return()
 
       # compute updated data of the traces
+      private$vbmsg("Construct aggregated data using private$construct_agg_traces (downsampler$update_trace)")
       traces_update_df <- private$construct_agg_traces(relayout_order_df)
 
       # set showlegend to FALSE, if many series are output
       # because of range_stat_aggregator
+      private$vbmsg("Set 'showlegend' to FALSE, if multiple series are output from 1 series (downsampler$update_trace)")
+
       if (any(duplicated(traces_update_df$uid))) {
         is_duplicated <- rep(FALSE, nrow(traces_update_df))
         is_uid_rng <- purrr::map_lgl(traces_update_df$trace, ~!is.null(.x[["fill"]]))
@@ -269,12 +286,17 @@ downsampler <- R6::R6Class(
       }
 
       # detect the index of the trace to be updated
+      private$vbmsg("Detect the index of the trace to be deleted/updated (downsampler$update_trace)")
+
       if (is.null(self$figure$x$data) ||
           any(purrr::map_lgl(self$figure$x$data, ~is.null(.$uid)))
       ) {
+        private$vbmsg("There are no traces to be update (downsampler$update_trace)")
         trace_idx_update <- integer()
         self$figure$x$data <- NULL
       } else {
+
+        private$vbmsg("Detect the traces using uid (downsampler$update_trace)")
         trace_idx_update <- purrr::map(
           unique(traces_update_df$uid),
           ~which(.x == purrr::map_chr(self$figure$x$data, ~.x$uid))
@@ -282,9 +304,11 @@ downsampler <- R6::R6Class(
           unlist()
 
         # delete the traces to be updated
+        private$vbmsg("Remove the traces from self$figure (downsampler$update_trace)")
         self$figure$x$data <- self$figure$x$data[-trace_idx_update]
       }
 
+      private$vbmsg("Construct the new traces and bind the existing ones (downsampler$update_trace)")
       new_trace <- traces_update_df$trace %>%
         purrr::keep(~"x" %in% names(.x))
 
@@ -295,6 +319,7 @@ downsampler <- R6::R6Class(
       )
 
       if (send_trace) {
+        private$vbmsg("Send the results (to updatePlotlyH) (downsampler$update_trace)")
         return(
           list(trace_idx_update = trace_idx_update,
                new_trace = new_trace
@@ -508,7 +533,10 @@ downsampler <- R6::R6Class(
     construct_agg_traces = function(relayout_order_df = NULL) {
 
       # check arguments
+      private$vbmsg("Check if the relayout order is not NULL (downsampler$construct_agg_traces)")
       if (is.null(relayout_order_df)) return()
+
+      private$vbmsg("Check the data types of the arguments (downsampler$construct_agg_traces)")
       assertthat::assert_that(inherits(relayout_order_df, "data.frame"))
       assertthat::assert_that(
         length(
@@ -522,6 +550,8 @@ downsampler <- R6::R6Class(
         relayout_order_df[, c("uid", "start", "end"), with = FALSE]
 
       # MAIN aggregation
+
+      private$vbmsg("Aggregate the data using private$aggregate_trace (downsampler$construct_agg_traces)")
       traces_update_df$agg_result <- purrr::pmap(
         traces_update_df %>%
           dplyr::left_join(private$traces_df, by = "uid") %>%
@@ -532,6 +562,7 @@ downsampler <- R6::R6Class(
       )
 
       # construct a list representing a trace
+      private$vbmsg("Change the data structure of the traces (downsampler$construct_agg_traces)")
       traces_update_agg_df <- traces_update_df %>%
         tidyr::unnest(agg_result) %>%
         dplyr::select(-start, -end) %>%
@@ -550,6 +581,7 @@ downsampler <- R6::R6Class(
 
 
       # join with the current data
+      private$vbmsg("Add the current traces (downsampler$construct_agg_traces)")
       colname_from_current <- c(
         "uid",
         setdiff(
@@ -582,24 +614,36 @@ downsampler <- R6::R6Class(
       data, start, end, name, legendgroup, aggregator, n_out, ...
       ) {
 
+      private$vbmsg("Extract data using start/end (downsampler$aggregate_trace)")
       # extract data
       if (!is.na(start) && length(start) > 0 &&
           !is.na(end)   && length(end)   > 0) {
-        data <- data[x >= start & x <= end]
+        data_orig <- data[x >= start & x <= end]
       } else {
-        data <- data
+        data_orig <- data
+      }
+
+      # even if it is no data, extract 4 data, not to delete the plot
+      if (nrow(data_orig) < 4) {
+        private$vbmsg("No samples were found so nearest 4 samples are used (downsampler$aggregate_trace)")
+        n_less_than_start <- nrow(data[x < start])
+        data_orig <- rbind(
+          data[x < start][n_less_than_start - c(1, 0),],
+          data[x > end][1:2,]
+          )
       }
 
       # number of the extracted data
-      nrow_orig <- nrow(data)
+      nrow_orig <- nrow(data_orig)
       # down-sample x and y
+      private$vbmsg("Aggregation using aggregator$aggregate (downsampler$aggregate_trace)")
       data_agg <- aggregator$
         aggregate(
-          x = data$x, y = data$y, n_out = n_out
+          x = data_orig$x, y = data_orig$y, n_out = n_out
         )%>%
         data.table::setDT() %>%
         merge(
-          data[,
+          data_orig[,
                intersect(colnames(data), c("x", "text", "hovertext")),
                with = FALSE],
           all.x = TRUE, sort = FALSE
@@ -610,6 +654,7 @@ downsampler <- R6::R6Class(
 
 
       # generate a message about the down-sampling
+      private$vbmsg("Generate the aggregation message (downsampler$aggregate_trace)")
       msg <- paste0(
         name,
         if_else(is.na(legendgroup), "", paste0("/", legendgroup)),
@@ -624,10 +669,12 @@ downsampler <- R6::R6Class(
 
       # if no data, stop here
       if (nrow_agg == 0) {
+        private$vbmsg("No aggregated data were found (downsampler$aggregate_trace)")
         return(tibble(name = as.character(name), data = list(data_agg)))
       }
 
       # generate a name for aggregation
+      private$vbmsg("Get the traces' names (downsampler$aggregate_trace)")
       name <- if_else(
         nrow_orig <= nrow_agg || inherits(aggregator, "null_aggregator"),
         as.character(name),
@@ -659,6 +706,15 @@ downsampler <- R6::R6Class(
       )
 
       return(agg_result)
+    },
+
+    # verbose
+    verbose = FALSE,
+    vbmsg = function(msg) {
+      if (private$verbose) {
+        message(msg)
+      }
     }
+
   ) # end of the private member
 ) # end of the R6 class

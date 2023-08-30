@@ -140,7 +140,8 @@ information on other arguments.
   use_light_build = TRUE,
   legend_options = list(name_prefix = "<b style=\\"color:sandybrown\\">[S]</b> ",
     name_suffix = "", xdiff_prefix = "<i style=\\"color:#fc9944\\"> ~", xdiff_suffix =
-    "</i>")
+    "</i>"),
+  verbose = F
 )}\if{html}{\out{</div>}}
 }
 
@@ -156,6 +157,9 @@ The number of samples shown after down-sampling. By default 1000.}
 Select an aggregation function. The list of the functions are obtained
 using \code{list_aggregators}.
 By default, \code{min_max_aggregator$new()}.}
+
+\item{\code{verbose}}{Boolean.
+Whether detailed messages to check the procedures are shown. By default, \code{FALSE}.}
 }
 \if{html}{\out{</div>}}
 }

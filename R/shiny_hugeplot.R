@@ -67,6 +67,8 @@
 #' Whether \code{shinyHugePlot::plotly_build_light} will be used.
 #' (if \code{FALSE}, \code{plotly::plotly_build} will be used)
 #' By default, \code{TRUE}.
+#' @param verbose Boolean.
+#' Whether detailed messages to check the procedures are shown. By default, \code{FALSE}.
 #' @param ... Not used.
 #' @importFrom htmltools div br
 #' @importFrom tidyselect everything
@@ -97,6 +99,7 @@ shiny_hugeplot.default <- function(
     downsampler_options = list(),
     shiny_options = list(),
     width = "100%", height = "600px",
+    verbose = FALSE,
     ...
 ) {
 
@@ -180,6 +183,7 @@ shiny_hugeplot.character <- function(
     plotly_layout_options = list(),
     shiny_options = list(),
     width = "100%", height = "600px",
+    verbose = FALSE,
     ...
 ) {
 
@@ -210,6 +214,7 @@ shiny_hugeplot.matrix <- function(
   plotly_layout_options = list(),
   shiny_options = list(),
   width = "100%", height = "600px",
+  verbose = FALSE,
   ...
   ) {
 
@@ -242,6 +247,7 @@ shiny_hugeplot.data.frame <- function(
     plotly_layout_options = list(),
     shiny_options = list(),
     width = "100%", height = "600px",
+    verbose = FALSE,
     ...
 ) {
 
@@ -273,6 +279,7 @@ shiny_hugeplot.plotly <- function(
     downsampler_options = list(),
     shiny_options = list(),
     width = "100%", height = "600px",
+    verbose = FALSE,
     ...
 ) {
 
@@ -281,6 +288,7 @@ shiny_hugeplot.plotly <- function(
   args$downsampler_options[["n_out"]] <- as.integer(n_out)
   args$downsampler_options[["aggregator"]] <- aggregator
   args$downsampler_options[["use_light_build"]] <- use_light_build
+  args$downsampler_options[["verbose"]] <- verbose
 
   ds <- do.call(
     downsampler$new,
@@ -304,6 +312,7 @@ shiny_hugeplot.downsampler <- function(
     obj, run_shiny = TRUE,
     shiny_options = list(),
     width = "100%", height = "600px",
+    verbose = FALSE,
     ...) {
 
   ds <- obj
@@ -371,7 +380,7 @@ shiny_hugeplot.downsampler <- function(
         updatePlotlyH(
           session = session, outputId = "fig",
           relayout_order = plotly::event_data("plotly_relayout"),
-          ds_obj = ds, reload = reload
+          ds_obj = ds, reload = reload, verbose = verbose
         )
       },
       label = "figure_updater"
