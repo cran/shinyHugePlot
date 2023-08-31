@@ -1,13 +1,13 @@
-1cf6358ce20186d6819fa024a2d4dd22 *DESCRIPTION
+2a7a71d659a138cef36dabce45d38854 *DESCRIPTION
 b07f72e74e96e1509f7d77f8ba58b37a *LICENSE
 29182dcc2f1f9c0745ba5420bf978a15 *LICENSE.note
 ce11fea845a59625575413edf60949b0 *NAMESPACE
-2dd44ea060e76941825d8c2b67c2f3e7 *NEWS.md
+b5c3d7a50a9943351ebfcba936777e51 *NEWS.md
 a69132575f68f67b9820d7501a75ea93 *R/LTTB_aggregator.R
 a909f936b6f06a56c9fb691b293e3dad *R/aggregator.R
 63181e80c9b2554a5e6fa44f6c3c8f5c *R/custom_func_aggregator.R
 e89d0e7d45ca04faeeb0adbc4b4eaa46 *R/custom_stat_aggregator.R
-99cd94d9e4526b27c80665a6fe197208 *R/downsampler.R
+17610f49b06ae19a0fbe77425e177c7d *R/downsampler.R
 cc2a898ee060b201869ed168e08ea6d9 *R/eLTTB_aggregator.R
 a4481f338459b0c3f60d45b1e6d13baa *R/globalVariables.R
 8e735c556ee39fca135fd558cedd112d *R/min_max_aggregator.R

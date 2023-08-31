@@ -574,7 +574,7 @@ downsampler <- R6::R6Class(
             ) %>%
             purrr::modify_if(
               ~inherits(.x, "list"),
-              ~purrr::modify_if(.x, ~length(.x) > 1, list) %>% as_tibble(.x)
+              ~purrr::modify_if(.x, ~length(.x) > 1, list) %>% as_tibble()
             )
         ) %>%
         tidyr::unnest(data)

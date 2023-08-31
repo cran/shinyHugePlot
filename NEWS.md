@@ -1,3 +1,7 @@
+# shinyHugePlot 0.2.5
+
+* A bug at using `rng_stat_aggregator` was fixed
+
 # shinyHugePlot 0.2.4
 
 * A bug at the close zoom level (duplication of the traces) was fixed
