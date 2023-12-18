@@ -36,6 +36,7 @@ aggregator <- R6::R6Class(
     #' @param n_out Integer or numeric.
     #' The number of samples that the aggregated data contains.
     aggregate = function(x, y, n_out) {
+
       assertthat::assert_that(
         length(x) == length(y),
         msg = "x and y must be the same length"

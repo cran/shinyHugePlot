@@ -1,3 +1,8 @@
+# shinyHugePlot 0.2.6
+
+* Arguments of `dplyr::across` were given
+* A bug when handling data with a lot of NAs was fixed
+
 # shinyHugePlot 0.2.5
 
 * A bug at using `rng_stat_aggregator` was fixed

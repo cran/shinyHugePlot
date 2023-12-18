@@ -51,11 +51,11 @@ min_max_ovlp_aggregator <- R6::R6Class(
       y_mat_2_values <- apply(y_mat_2, 2, function(x) sum(!is.na(x)))
 
       idx_min <- 1 +
-        purrr::map_int(1:n_minmax, ~which.min(y_mat_1[, .x])) +
+        purrr::map_int(1:n_minmax, ~max(0, which.min(y_mat_1[, .x]))) +
         c(0, cumsum(y_mat_1_values)[1:(n_minmax - 1)])
 
       idx_max <- block_size %/% 2 +
-        purrr::map_int(1:n_minmax, ~which.max(y_mat_2[, .x])) +
+        purrr::map_int(1:n_minmax, ~max(0, which.max(y_mat_2[, .x]))) +
         c(0, cumsum(y_mat_2_values)[1:(n_minmax - 1)])
 
       idx <- c(1, idx_min, idx_max, length(x)) %>% sort()

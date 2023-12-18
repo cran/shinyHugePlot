@@ -472,7 +472,7 @@ downsampler <- R6::R6Class(
       # else, update according to the order
       } else {
         x_order_df <- as_tibble(relayout_order) %>%
-          dplyr::mutate(across(.fns = list)) %>%
+          dplyr::mutate(across(.cols = everything(), .fns = list)) %>%
           tidyr::pivot_longer(
             everything(),
             names_sep = "\\.", names_to = c("xaxis", "type")
@@ -516,8 +516,8 @@ downsampler <- R6::R6Class(
         ) %>%
         dplyr::mutate(
           across(
-            c(start, end),
-            ~modify_if(
+            .cols = c(start, end),
+            .fns = ~modify_if(
               .x, ~inherits(.x, c("POSIXt", "character")),
               ~private$plotlytime_to_nanotime(.x, private$tz)
             )
@@ -570,7 +570,7 @@ downsampler <- R6::R6Class(
           data = purrr::modify_if(
             data,
             ~inherits(.x, "data.frame"),
-            ~dplyr::summarise(.x, across(.fns = list))
+            ~dplyr::summarise(.x, across(.cols = everything(), .fns = list))
             ) %>%
             purrr::modify_if(
               ~inherits(.x, "list"),
