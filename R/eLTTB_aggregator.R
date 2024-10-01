@@ -26,15 +26,14 @@ eLTTB_aggregator <- R6::R6Class(
 
     #' @description
     #' Constructor of the aggregator.
-    #' @param interleave_gaps,coef_gap,NA_position,accepted_datatype
+    #' @param interleave_gaps,coef_gap,NA_position
     #' Arguments pass to the constructor of \code{aggregator} object.
     #' @param ...
     #' Arguments pass to the constructor of \code{aggregator},
     #' \code{LTTB_aggregator} and \code{min_max_oblp_aggregator} objects.
     initialize = function(
       ...,
-      interleave_gaps, coef_gap, NA_position,
-      accepted_datatype = c("numeric", "integer", "character", "factor", "logical")
+      interleave_gaps, coef_gap, NA_position
     ) {
       args <- c(as.list(environment()), list(...))
       do.call(super$initialize, args)
@@ -48,6 +47,7 @@ eLTTB_aggregator <- R6::R6Class(
     }
   ),
   private = list(
+    accepted_datatype = c("numeric", "integer", "character", "factor", "logical"),
     aggregate_exec = function(x, y, n_out) {
       if (length(x) > n_out * 1e3) {
         result <- self$minmax$aggregate(x, y, n_out * 50)

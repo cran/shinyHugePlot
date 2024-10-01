@@ -53,13 +53,7 @@ plotly::plot_ly(x = d_agg$x, y = d_agg$y, type = "scatter", mode = "lines")
 \subsection{Method \code{new()}}{
 Constructor of the aggregator.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{eLTTB_aggregator$new(
-  ...,
-  interleave_gaps,
-  coef_gap,
-  NA_position,
-  accepted_datatype = c("numeric", "integer", "character", "factor", "logical")
-)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{eLTTB_aggregator$new(..., interleave_gaps, coef_gap, NA_position)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -68,7 +62,7 @@ Constructor of the aggregator.
 \item{\code{...}}{Arguments pass to the constructor of \code{aggregator},
 \code{LTTB_aggregator} and \code{min_max_oblp_aggregator} objects.}
 
-\item{\code{interleave_gaps, coef_gap, NA_position, accepted_datatype}}{Arguments pass to the constructor of \code{aggregator} object.}
+\item{\code{interleave_gaps, coef_gap, NA_position}}{Arguments pass to the constructor of \code{aggregator} object.}
 }
 \if{html}{\out{</div>}}
 }

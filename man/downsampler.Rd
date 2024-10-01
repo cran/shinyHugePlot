@@ -115,6 +115,7 @@ registered in this instance.}
 <ul>
 <li><span class="pkg-link" data-pkg="shinyHugePlot" data-topic="plotly_datahandler" data-id="plotly_data_to_df"><a href='../../shinyHugePlot/html/plotly_datahandler.html#method-plotly_datahandler-plotly_data_to_df'><code>shinyHugePlot::plotly_datahandler$plotly_data_to_df()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="shinyHugePlot" data-topic="plotly_datahandler" data-id="set_trace_data"><a href='../../shinyHugePlot/html/plotly_datahandler.html#method-plotly_datahandler-set_trace_data'><code>shinyHugePlot::plotly_datahandler$set_trace_data()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="shinyHugePlot" data-topic="plotly_datahandler" data-id="srcs_to_df"><a href='../../shinyHugePlot/html/plotly_datahandler.html#method-plotly_datahandler-srcs_to_df'><code>shinyHugePlot::plotly_datahandler$srcs_to_df()</code></a></span></li>
 </ul>
 </details>
 }}
@@ -134,6 +135,9 @@ information on other arguments.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{downsampler$new(
   figure = NULL,
+  formula = NULL,
+  srcs = NULL,
+  srcs_ext = list(),
   n_out = 1000L,
   aggregator = min_max_aggregator$new(),
   tz = Sys.timezone(),
@@ -148,7 +152,7 @@ information on other arguments.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{figure, legend_options, tz, use_light_build}}{Arguments passed to \code{plotly_datahandler$new}.}
+\item{\code{figure, srcs, srcs_ext, formula, legend_options, tz, use_light_build}}{Arguments passed to \code{plotly_datahandler$new}.}
 
 \item{\code{n_out}}{Integer or numeric.
 The number of samples shown after down-sampling. By default 1000.}

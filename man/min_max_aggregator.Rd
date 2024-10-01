@@ -46,19 +46,13 @@ plotly::plot_ly(x = d_agg$x, y = d_agg$y, type = "scatter", mode = "lines")
 \subsection{Method \code{new()}}{
 Constructor of the Aggregator.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{min_max_aggregator$new(
-  ...,
-  interleave_gaps,
-  coef_gap,
-  NA_position,
-  accepted_datatype
-)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{min_max_aggregator$new(..., interleave_gaps, coef_gap, NA_position)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{interleave_gaps, coef_gap, NA_position, accepted_datatype, ...}}{Arguments pass to the constructor of \code{aggregator} object.}
+\item{\code{interleave_gaps, coef_gap, NA_position, ...}}{Arguments pass to the constructor of \code{aggregator} object.}
 }
 \if{html}{\out{</div>}}
 }

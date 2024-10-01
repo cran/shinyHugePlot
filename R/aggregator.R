@@ -15,18 +15,17 @@ aggregator <- R6::R6Class(
     #' @description
     #' Constructor of \code{aggregator}
     #' @param ... Not used.
-    #' @param interleave_gaps,NA_position,coef_gap,accepted_datatype
+    #' @param interleave_gaps,NA_position,coef_gap
     #' Arguments passed to \code{self$set_parameters}, optional.
     initialize = function(
-      ...,
-      interleave_gaps = FALSE, NA_position = "begin", coef_gap = 3.0,
-      accepted_datatype = NULL
-      ) {
+    ...,
+    interleave_gaps = FALSE, NA_position = "begin", coef_gap = 3.0
+    ) {
+
       self$set_parameters(
         interleave_gaps   = interleave_gaps,
         coef_gap          = coef_gap,
-        NA_position       = NA_position,
-        accepted_datatype = accepted_datatype
+        NA_position       = NA_position
       )
     },
 
@@ -34,38 +33,71 @@ aggregator <- R6::R6Class(
     #' Aggregates the given input and returns samples.
     #' @param x,y Indexes and values that has to be aggregated.
     #' @param n_out Integer or numeric.
+    #' @param db Character. The duck-db that contains the x-y data.
     #' The number of samples that the aggregated data contains.
-    aggregate = function(x, y, n_out) {
+    aggregate = function(x, y, n_out, db = NULL) {
+
+      if (is.null(db)) {
+        assertthat::assert_that(
+          inherits(x, c("numeric", "integer", "integer64", "POSIXt", "character","Date"))
+        )
+
+        assertthat::assert_that(length(x) > 0)
+      } else {
+        assertthat::assert_that(inherits(db, "character"))
+        assertthat::assert_that(file.exists(db))
+
+        result <- private$aggregate_db(x, y, n_out, db)
+
+        # if interleve_gaps is TRUE, procedure for irregular gaps is conducted
+        if (private$interleave_gaps) {
+          result <- private$assign_gaps(result, n_out)
+        }
+
+        return(result)
+      }
 
       assertthat::assert_that(
-        length(x) == length(y),
-        msg = "x and y must be the same length"
-       )
+        inherits(y, private$accepted_datatype),
+        msg = paste(
+          "Data type of the y is", paste(class(y), collapse = "/"),
+          ", which doesn't match with the applicable data classes (",
+          paste(private$accepted_datatype, collapse = "/"),
+          ")"
+        )
+      )
 
-      assertthat::assert_that(inherits(n_out, c("integer", "numeric")))
-
-      # base case: the passed series is empty
-      if (length(y) == 0) return(list(x = x, y = y))
-
-      # assert that the datatype of y is acceptable
-      if (!is.null(private$accepted_datatype)) {
+      if (inherits(y, setdiff(private$accepted_datatype, "list"))) {
         assertthat::assert_that(
-          inherits(y, private$accepted_datatype),
-          msg = paste(
-            "Data type of the y is", paste(class(y), collapse = "/"),
-            ", which doesn't match with the applicable data classes (",
-            paste(private$accepted_datatype, collapse = "/"),
-            ")"
-          )
+          length(x) == length(y),
+          msg = "x and y must be the same length"
+        )
+      } else if (inherits(y, "list")) {
+        assertthat::assert_that(
+          all(purrr::map_lgl(y, ~inherits(.x, c("numeric", "integer", "character", "factor")))),
+          msg = "all components of y must inherit specified classes"
+        )
+        assertthat::assert_that(
+          length(setdiff(c("open", "close", "high", "low"), names(y))) == 0,
+          msg = "y must have open, close, high, and low components"
+        )
+        assertthat::assert_that(
+          all(purrr::map_lgl(y, ~length(.x) == length(x))),
+          msg = "x and y must be the same length"
         )
       }
 
+      assertthat::assert_that(inherits(n_out, c("integer", "numeric")))
+
       # if the samples are less than n_out, return input
-      if (length(x) < n_out) {
+      if (length(x) < n_out & !inherits(y, "list") & class(self)[1] != "candlestick_aggregator") {
+        if (inherits(y, "list")) {
+          result <- c(x = list(x), y)
+        } else {
+          result <- list(x = x, y = y)
+        }
 
-        result <- list(x = x, y = y)
-
-      # if not, perform aggregation
+        # if not, perform aggregation
       } else {
 
         result <- private$aggregate_exec(x, y, n_out)
@@ -74,49 +106,8 @@ aggregator <- R6::R6Class(
 
       # if interleve_gaps is TRUE, procedure for irregular gaps is conducted
       if (private$interleave_gaps) {
-
-        # compute where the irregular gaps are
-        gap_idx <- private$cmpt_gap_idx(result$x)
-
-        # if no aggregation, insert NAs at the irregular gaps
-        # note that the length might be longer than n_out
-        if (length(x) < n_out) {
-
-          result_grp <- cumsum(is.element(seq_along(x), gap_idx + 1))
-
-          insertNA <- function(out, input) return(c(out, NA, input))
-
-          result <- purrr::map(
-            result,
-            ~split(.x, result_grp) %>%
-              purrr::reduce(insertNA)
-          )
-
-        # if aggregation is performed, replace the gaps with NA
-        # the length of the results is not changed
-        } else if(length(gap_idx) > 0) {
-
-          if (private$NA_position == "begin") {
-            gap_idx <- gap_idx
-          } else if (private$NA_position == "both") {
-            gap_idx <- c(gap_idx, gap_idx + 1)
-          } else {
-            gap_idx <- gap_idx + 1
-          }
-
-          gap_idx <- gap_idx[gap_idx >= 1 & gap_idx <= length(result$x)]
-
-          result <- purrr::map(
-            result,
-            function(x) {
-              x[gap_idx] <- NA
-              return(x)
-            }
-          )
-        }
+        result <- private$assign_gaps(result, n_out)
       }
-
-
 
       return(result)
     },
@@ -144,8 +135,8 @@ aggregator <- R6::R6Class(
     #' This parameter indicates the supported data classes.
     #' If all data classes are accepted, set it to \code{NULL}.
     set_parameters = function(
-      ...,
-      interleave_gaps, NA_position, coef_gap, accepted_datatype
+    ...,
+    interleave_gaps, NA_position, coef_gap
     ) {
       if (!missing(interleave_gaps)) {
         assertthat::assert_that(inherits(interleave_gaps, "logical"))
@@ -160,13 +151,6 @@ aggregator <- R6::R6Class(
       if (!missing(coef_gap)) {
         assertthat::assert_that(inherits(coef_gap, c("numeric", "integer")))
         private$coef_gap <- as.numeric(coef_gap)
-      }
-
-      if (!missing(accepted_datatype)) {
-        assertthat::assert_that(
-          inherits(accepted_datatype, "character") || is.null(accepted_datatype)
-        )
-        private$accepted_datatype <- accepted_datatype
       }
 
       invisible()
@@ -200,8 +184,12 @@ aggregator <- R6::R6Class(
     # how large the "large gap" compared to the median of the gap
     coef_gap = 3.0,
 
+
     # method to aggregate x and y, which is defined in the sub class
     aggregate_exec = function(x, y, n_out) {},
+
+    # method to aggregate using srcs
+    aggregate_db = function(x, y, n_out, db) {},
 
     # find where the gap is large and returns the index
     cmpt_gap_idx = function(x) {
@@ -214,6 +202,55 @@ aggregator <- R6::R6Class(
       gap_idx <- which(x_diff > private$coef_gap * x_diff_med)
       return(gap_idx)
     },
+
+    # assign gaps
+    assign_gaps = function(data, n_out) {
+      x <- data$x
+
+      # compute where the irregular gaps are
+      gap_idx <- private$cmpt_gap_idx(x)
+
+      # if no aggregation, insert NAs at the irregular gaps
+      # note that the length might be longer than n_out
+      if (length(x) < n_out) {
+
+        data_grp <- cumsum(is.element(seq_along(x), gap_idx + 1))
+
+        insertNA <- function(out, input) return(c(out, NA, input))
+
+        result <- purrr::map(
+          data,
+          ~split(.x, data_grp) %>%
+            purrr::reduce(insertNA)
+        )
+
+        # if aggregation is performed, replace the gaps with NA
+        # the length of the results is not changed
+      } else if(length(gap_idx) > 0) {
+
+        if (private$NA_position == "begin") {
+          gap_idx <- gap_idx
+        } else if (private$NA_position == "both") {
+          gap_idx <- c(gap_idx, gap_idx + 1)
+        } else {
+          gap_idx <- gap_idx + 1
+        }
+
+        gap_idx <- gap_idx[gap_idx >= 1 & gap_idx <= length(x)]
+
+        result <- purrr::map(
+          data,
+          function(x) {
+            x[gap_idx] <- NA
+            return(x)
+          }
+        )
+      }
+
+      return(result)
+
+    },
+
 
     #' Generate a matrix using x and n_out
     generate_matrix = function(x, n_out, remove_first_last = TRUE) {
@@ -265,15 +302,15 @@ aggregator <- R6::R6Class(
       assertthat::assert_that(margin %in% c(1L, 2L))
 
       nm <- seq(1, dim(mat)[margin])
-      v <- as.nanotime(nm)
+      v <- nanotime::as.nanotime(nm)
 
       if (margin == 1L) {
         for (i in nm) {
-          v[i] <- as.nanotime(func(mat[i, ]))
+          v[i] <- nanotime::as.nanotime(func(mat[i, ]))
         }
       } else {
         for (i in nm) {
-          v[i] <- as.nanotime(func(mat[, i]))
+          v[i] <- nanotime::as.nanotime(func(mat[, i]))
         }
       }
       return(v)

@@ -20,17 +20,18 @@ min_max_ovlp_aggregator <- R6::R6Class(
   public = list(
     #' @description
     #' Constructor of the Aggregator.
-    #' @param interleave_gaps,coef_gap,NA_position,accepted_datatype,...
+    #' @param interleave_gaps,coef_gap,NA_position,...
     #' Arguments pass to the constructor of \code{aggregator} object.
     initialize = function(
       ...,
-      interleave_gaps, coef_gap, NA_position, accepted_datatype
+      interleave_gaps, coef_gap, NA_position
     ) {
       args <- c(as.list(environment()), list(...))
       do.call(super$initialize, args)
     }
   ),
   private = list(
+    accepted_datatype = c("numeric", "integer", "character", "factor", "logical"),
     aggregate_exec = function(x, y, n_out) {
 
       n_minmax <- n_out / 2 - 1

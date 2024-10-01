@@ -40,8 +40,7 @@ Constructor of \code{aggregator}
   ...,
   interleave_gaps = FALSE,
   NA_position = "begin",
-  coef_gap = 3,
-  accepted_datatype = NULL
+  coef_gap = 3
 )}\if{html}{\out{</div>}}
 }
 
@@ -50,7 +49,7 @@ Constructor of \code{aggregator}
 \describe{
 \item{\code{...}}{Not used.}
 
-\item{\code{interleave_gaps, NA_position, coef_gap, accepted_datatype}}{Arguments passed to \code{self$set_parameters}, optional.}
+\item{\code{interleave_gaps, NA_position, coef_gap}}{Arguments passed to \code{self$set_parameters}, optional.}
 }
 \if{html}{\out{</div>}}
 }
@@ -61,7 +60,7 @@ Constructor of \code{aggregator}
 \subsection{Method \code{aggregate()}}{
 Aggregates the given input and returns samples.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{aggregator$aggregate(x, y, n_out)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{aggregator$aggregate(x, y, n_out, db = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -69,7 +68,9 @@ Aggregates the given input and returns samples.
 \describe{
 \item{\code{x, y}}{Indexes and values that has to be aggregated.}
 
-\item{\code{n_out}}{Integer or numeric.
+\item{\code{n_out}}{Integer or numeric.}
+
+\item{\code{db}}{Character. The duck-db that contains the x-y data.
 The number of samples that the aggregated data contains.}
 }
 \if{html}{\out{</div>}}
@@ -81,13 +82,7 @@ The number of samples that the aggregated data contains.}
 \subsection{Method \code{set_parameters()}}{
 Setting of the parameters for the aggregation
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{aggregator$set_parameters(
-  ...,
-  interleave_gaps,
-  NA_position,
-  coef_gap,
-  accepted_datatype
-)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{aggregator$set_parameters(..., interleave_gaps, NA_position, coef_gap)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{

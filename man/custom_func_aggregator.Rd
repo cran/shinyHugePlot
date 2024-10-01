@@ -58,8 +58,7 @@ Constructor of the Aggregator.
   aggregation_func,
   interleave_gaps,
   coef_gap,
-  NA_position,
-  accepted_datatype
+  NA_position
 )}\if{html}{\out{</div>}}
 }
 
@@ -70,7 +69,7 @@ Constructor of the Aggregator.
 User-defined function to aggregate data,
 of which arguments are \code{x}, \code{y} and \code{n_out}.}
 
-\item{\code{interleave_gaps, coef_gap, NA_position, accepted_datatype, ...}}{Arguments pass to the constructor of \code{aggregator} object.}
+\item{\code{interleave_gaps, coef_gap, NA_position, ...}}{Arguments pass to the constructor of \code{aggregator} object.}
 }
 \if{html}{\out{</div>}}
 }

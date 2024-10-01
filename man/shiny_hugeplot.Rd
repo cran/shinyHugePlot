@@ -3,6 +3,7 @@
 \name{shiny_hugeplot}
 \alias{shiny_hugeplot}
 \alias{shiny_hugeplot.default}
+\alias{shiny_hugeplot.formula}
 \alias{shiny_hugeplot.character}
 \alias{shiny_hugeplot.matrix}
 \alias{shiny_hugeplot.data.frame}
@@ -23,6 +24,24 @@ shiny_hugeplot(obj, ...)
   n_out = 1000L,
   run_shiny = TRUE,
   downsampler_options = list(),
+  shiny_options = list(),
+  width = "100\%",
+  height = "600px",
+  verbose = FALSE,
+  ...
+)
+
+\method{shiny_hugeplot}{formula}(
+  obj = NULL,
+  srcs = NULL,
+  n_out = 1000L,
+  aggregator = min_max_aggregator$new(),
+  run_shiny = TRUE,
+  use_light_build = TRUE,
+  fread_options = list(),
+  downsampler_options = list(),
+  plotly_options = list(type = "scatter", mode = "lines"),
+  plotly_layout_options = list(),
   shiny_options = list(),
   width = "100\%",
   height = "600px",
@@ -126,7 +145,9 @@ If a \code{plotly} object is given, the data and layout of it will be used
 for constructing the figure of the \code{shiny} application.
 If a \code{downsampler} object is given, the data, layout, and
 down-sampling options for aggregating original data of it will be used for
-constructing \code{shiny} application.}
+constructing \code{shiny} application.
+If a \code{formula} is given, the data will be saved and loaded using duck-db.
+The sources of the data (\code{srcs}) must be given as a character string}
 
 \item{...}{Not used.}
 
@@ -174,6 +195,8 @@ By default, \code{100\%} and \code{600px}.}
 
 \item{verbose}{Boolean.
 Whether detailed messages to check the procedures are shown. By default, \code{FALSE}.}
+
+\item{srcs}{Character, used when a \code{formula} is given as the \code{obj}.}
 
 \item{fread_options}{Named list, optional.
 Arguments passed to \code{data.table::fread},

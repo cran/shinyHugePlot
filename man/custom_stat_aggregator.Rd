@@ -51,8 +51,7 @@ Constructor of the Aggregator.
   x_mean = TRUE,
   interleave_gaps,
   coef_gap,
-  NA_position,
-  accepted_datatype
+  NA_position
 )}\if{html}{\out{</div>}}
 }
 
@@ -71,7 +70,7 @@ set this argument to \code{FALSE}, x values that give the maximum
 y values are used.
 By default, \code{TRUE}.}
 
-\item{\code{interleave_gaps, coef_gap, NA_position, accepted_datatype, ...}}{Arguments pass to the constructor of \code{aggregator} object.}
+\item{\code{interleave_gaps, coef_gap, NA_position, ...}}{Arguments pass to the constructor of \code{aggregator} object.}
 }
 \if{html}{\out{</div>}}
 }

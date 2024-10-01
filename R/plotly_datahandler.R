@@ -16,6 +16,8 @@
 #' @importFrom plotly add_trace subplot
 #' @importFrom tidyr unnest pivot_wider
 #' @importFrom lazyeval f_eval
+#' @importFrom DBI dbConnect dbDisconnect dbExecute dbGetQuery
+#' @importFrom duckdb duckdb
 #' @description
 #' A class for handling \code{plotly} data,
 #' which defines functions used in the \code{downsampler} class
@@ -37,6 +39,10 @@ plotly_datahandler <- R6::R6Class(
     #' will be included in the instance (as a reference).
     #' @param figure \code{plotly} object.
     #' The traces of this object will be down-sampled.
+    #' @param srcs,srcs_ext,formula Character and formula, optional.
+    #' \code{srcs} is the path of the source data (or directory).
+    #' When a directory is specified, \code{srcs_ext} is the extension of the source file.
+    #' \code{formula} is the formula to extract the data from the source data.
     #' @param legend_options Named list, optional.
     #' Names of the elements are \code{name_prefix},
     #' \code{name_suffix}, \code{xdiff_prefix},
@@ -56,6 +62,9 @@ plotly_datahandler <- R6::R6Class(
     #'
     initialize = function(
       figure = NULL,
+      srcs = NULL,
+      formula = NULL,
+      srcs_ext = NULL,
       legend_options = list(
         name_prefix  = '<b style="color:sandybrown">[S]</b> ',
         name_suffix  = "",
@@ -68,6 +77,7 @@ plotly_datahandler <- R6::R6Class(
 
       # check classes and lengths of the arguments
       assertthat::assert_that(is.null(figure) || inherits(figure, "plotly"))
+      assertthat::assert_that(is.null(srcs) || inherits(srcs, "character"))
       assertthat::assert_that(inherits(legend_options, "list"))
       assertthat::assert_that(inherits(tz, "character"))
 
@@ -79,6 +89,10 @@ plotly_datahandler <- R6::R6Class(
         if (!is.null(legend_options[[opt]])) {
           private$legend_options[[opt]] <- legend_options[[opt]]
         }
+      }
+
+      if (!is.null(figure) & !is.null(srcs)) {
+        warning("Both figure and srcs are given. srcs is neglected.")
       }
 
       private$tz <- tz
@@ -120,13 +134,30 @@ plotly_datahandler <- R6::R6Class(
       private$set_trace_df_default()
       traces_df <- self$plotly_data_to_df(figure$x$data)
 
+      if (nrow(traces_df) == 0 & !is.null(srcs)) {
+        assertthat::assert_that(!is.null(formula) && inherits(formula, "formula"))
+        traces_df <- self$srcs_to_df(fml = formula, srcs = srcs, srcs_ext = srcs_ext)
+      }
+
       # change figure data according to the traces_df, if necessary
       figure$x$attrs <- NULL
-      if (nrow(traces_df) > 0 && "data" %in% colnames(traces_df)) {
+      if (length(figure$x$data) > 0 && nrow(traces_df) > 0 && "data" %in% colnames(traces_df)) {
         figure$x$data <- purrr::map2(
           figure$x$data, traces_df$data,
           ~.x[setdiff(names(.x), colnames(.y))]
           )
+      } else if (length(figure$x$data) == 0) {
+
+        figure$x$data <- purrr::pmap(
+          traces_df,
+          function(xaxis, ...) {
+            plotly::plotly_build(
+              plotly::plot_ly(
+                type = "scatter", mode = "lines", xaxis = xaxis
+              )
+            )$x$data[[1]]
+          }
+        )
       } else if (nrow(traces_df) == 0) {
         figure$x$data <- plotly::plotly_build(
           plotly::plot_ly(type = "scatter", mode = "lines")
@@ -215,6 +246,115 @@ plotly_datahandler <- R6::R6Class(
       invisible()
     },
 
+    #' @description
+    #' Covert the data contained in \code{srcs} file(s) to a duck-db.
+    #' A minimum data and the path of the database will be returned.
+    #' @param fml Formula.
+    #' The formula to extract the data from the source data.
+    #' @param srcs Character.
+    #' The name of the source file (e.g. data.parquet) or the directory can be specified.
+    #' @param srcs_ext Character, optional.
+    #' The extension of the source file, if \code{srcs} is a directory.
+    srcs_to_df = function(fml, srcs, srcs_ext = NULL) {
+
+      assertthat::assert_that(file.exists(srcs) || dir.exists(srcs))
+      assertthat::assert_that(
+        length(labels(terms(fml))) == 1,
+        msg = "only one term is acceptable"
+      )
+
+      srcs_name <- basename(srcs) %>% str_remove("\\..*$")
+
+      if (dir.exists(srcs)) {
+        srcs_path <- paste0(
+          "'", str_remove(srcs, "/?$"),
+          "/**/*", srcs_ext, "'"
+        )
+      } else {
+        srcs_path <- paste0("'", srcs, "'")
+      }
+
+      db_path <- paste0(tempfile("db"), "/", srcs_name, ".duckdb")
+      message("The duck-db is created at ", db_path)
+
+      if (file.exists(db_path)) {
+        file.remove(db_path)
+      } else if (!dir.exists(dirname(db_path))) {
+        dir.create(dirname(db_path))
+      }
+
+      x_name <- labels(terms(fml))
+      y_name <- all.vars(fml)[1]
+
+      # create a table in the database from the source data
+      con <- DBI::dbConnect(duckdb::duckdb(), dbdir = db_path)
+
+        DBI::dbExecute(
+          con,
+          paste0(
+            "create table original_raw_data",
+            " as select ", x_name, " as x, ", y_name, " as y from ", srcs_path
+          )
+        )
+
+        col_info <- DBI::dbGetQuery(con, paste0("PRAGMA table_info(original_raw_data)"))
+
+        x_type <- col_info["type"][col_info["name"] == "x"]
+        y_type <- col_info["type"][col_info["name"] == "y"]
+
+        DBI::dbExecute(
+          con,
+          paste0(
+            "create table original_data",
+            "(x ", x_type, " primary key, y ", y_type, ")"
+          )
+        )
+
+        DBI::dbExecute(
+          con,
+          paste0(
+            "create table original_grouped_data",
+            " as select x, first(y) as y",
+            " from original_raw_data ", "group by x order by x"
+          )
+        )
+
+        DBI::dbExecute(
+          con,
+          paste0(
+            "insert into original_data(x, y) ",
+            "select * from original_grouped_data"
+          )
+        )
+
+      DBI::dbDisconnect(con)
+
+      if (stringr::str_detect(x_type, "^TIME") | stringr::str_detect(x_type, "^DATE")) {
+        x_initval <- nanotime::as.nanotime(Sys.time())
+      } else {
+        x_initval <- 0.0
+      }
+
+      y_initval <- 0.0
+
+      data_init <- data.table::data.table(
+        x = x_initval, y = y_initval
+      )
+
+      traces_df_output <- data.table::data.table(
+        uid = stringr::str_replace(basename(tempfile()), "^file", "ar"),
+        name = y_name,
+        showlegend = TRUE,
+        legendgroup = NA,
+        customdatasrc = list(db_path),
+        xaxis = "x",
+        yaxis = "y",
+        data = list(data_init)
+      )
+
+      return(traces_df_output)
+    },
+
 
     #' @description
     #' Covert the data contained in \code{plotly} object to a data frame.
@@ -237,11 +377,11 @@ plotly_datahandler <- R6::R6Class(
       )
       assertthat::assert_that(
         all(purrr::map_lgl(
-          plotly_data, ~.x$type %in% c("scatter", "scattergl")
+          plotly_data, ~.x$type %in% private$trace_type_accept
           )),
         msg = paste0(
           "The types of the all traces must be ",
-          paste(private$trace_type_accept, collapse = "or")
+          paste(private$trace_type_accept, collapse = " or ")
         )
       )
 
@@ -273,7 +413,7 @@ plotly_datahandler <- R6::R6Class(
         plotly_data <- purrr::map(
           plotly_data,
           function(trace) {
-            if (inherits(trace[["x"]], c("integer64", "POSIXt"))) {
+            if (inherits(trace[["x"]], c("integer64", "POSIXt", "Date"))) {
               trace[["x"]] <- nanotime::as.nanotime(trace[["x"]])
             } else if (inherits(trace[["x"]], "character")) {
               trace[["x"]] <- private$plotlytime_to_nanotime(
@@ -395,9 +535,10 @@ plotly_datahandler <- R6::R6Class(
     # traces_df and its default structure
     traces_df = NULL,
     trace_df_def = NULL,
+    trace_type_accept = c("scatter", "scattergl", "candlestick"),
 
     set_trace_df_default = function() {
-      x_class <- c("numeric", "integer", "integer64", "POSIXt", "character")
+      x_class <- c("numeric", "integer", "integer64", "POSIXt", "character","Date")
       y_class <- c("numeric", "integer", "character", "factor")
       name_class <- c("character", "factor")
       lgrp_class <- c("character", "factor")
@@ -405,7 +546,11 @@ plotly_datahandler <- R6::R6Class(
       private$trace_df_def <- tibble::tribble(
         ~name,         ~required, ~data, ~default,     ~class,
         "x",           TRUE,      TRUE,  NULL,         x_class,
-        "y",           TRUE,      TRUE,  NULL,         y_class,
+        "y",           FALSE,     TRUE,  NULL,         y_class,
+        "open",        FALSE,     TRUE,  NULL,         c("numeric", "integer"),
+        "high",        FALSE,     TRUE,  NULL,         c("numeric", "integer"),
+        "low",         FALSE,     TRUE,  NULL,         c("numeric", "integer"),
+        "close",       FALSE,     TRUE,  NULL,         c("numeric", "integer"),
         "text",        FALSE,     TRUE,  NULL,         c("character"),
         "hovertext",   FALSE,     TRUE,  NULL,         c("character"),
         "xaxis",       FALSE,     FALSE, "x",          c("character"),

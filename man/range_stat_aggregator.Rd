@@ -18,7 +18,7 @@ data(noise_fluct)
 agg <- range_stat_aggregator$new(
   ylwr = min, y = mean, yupr = max, interleave_gaps = TRUE
 )
-d_agg <- agg$aggregate(noise_fluct$time, noise_fluct$f500, 100)
+d_agg <- agg$aggregate(nanotime::as.nanotime(noise_fluct$time), noise_fluct$f500, 100)
 plotly::plot_ly(x = d_agg$x, y = d_agg$y, type = "scatter", mode = "lines") \%>\%
   plotly::add_trace(x = d_agg$x, y = d_agg$ylwr, type = "scatter", mode = "lines")\%>\%
   plotly::add_trace(x = d_agg$x, y = d_agg$yupr, type = "scatter", mode = "lines")
@@ -57,8 +57,7 @@ Constructor of the aggregator.
   yupr = max,
   interleave_gaps,
   coef_gap,
-  NA_position,
-  accepted_datatype
+  NA_position
 )}\if{html}{\out{</div>}}
 }
 
@@ -70,7 +69,7 @@ Statistical values are calculated using this function.
 By default, \code{max, mean, min}, respectively.
 Note that the NA values are omitted automatically.}
 
-\item{\code{interleave_gaps, coef_gap, NA_position, accepted_datatype, ...}}{Arguments pass to the constructor of \code{aggregator} object.}
+\item{\code{interleave_gaps, coef_gap, NA_position, ...}}{Arguments pass to the constructor of \code{aggregator} object.}
 }
 \if{html}{\out{</div>}}
 }

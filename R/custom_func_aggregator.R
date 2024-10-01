@@ -31,11 +31,11 @@ custom_func_aggregator <- R6::R6Class(
     #' @param aggregation_func Function.
     #' User-defined function to aggregate data,
     #' of which arguments are \code{x}, \code{y} and \code{n_out}.
-    #' @param interleave_gaps,coef_gap,NA_position,accepted_datatype,...
+    #' @param interleave_gaps,coef_gap,NA_position,...
     #' Arguments pass to the constructor of \code{aggregator} object.
     initialize = function(
       ..., aggregation_func,
-      interleave_gaps, coef_gap, NA_position, accepted_datatype
+      interleave_gaps, coef_gap, NA_position
       ) {
       args <- c(as.list(environment()), list(...))
       do.call(super$initialize, args)
@@ -55,6 +55,7 @@ custom_func_aggregator <- R6::R6Class(
 
   ),
   private = list(
+    accepted_datatype = c("numeric", "integer", "character", "factor", "logical"),
     aggregation_func = NULL,
     aggregate_exec = function(x, y, n_out) {
       return(private$aggregation_func(x, y, n_out))

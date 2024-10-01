@@ -1,7 +1,7 @@
 Package: shinyHugePlot
 Type: Package
 Title: Efficient Plotting of Large-Sized Data
-Version: 0.2.6
+Version: 0.3.0
 Authors@R: c(
     person(given = "Junta", family = "Tagusari", email = "j.tagusari@eng.hokudai.ac.jp", role = c("aut", "cre", "cph")),
     person(given = "Jonas", family = "Van Der Donckt", role = c("cph")),
@@ -16,7 +16,7 @@ Imports: R6 (>= 2.5.1), dplyr (>= 1.0.9), tibble (>= 3.1.7), tidyr (>=
         (>= 1.4.0), nanotime (>= 0.3.6), assertthat (>= 0.2.1), bit64
         (>= 4.0.5), purrr (>= 0.3.4), jsonlite (>= 1.8.0), lazyeval (>=
         0.2.2), shinyjs (>= 2.1.0), htmltools (>= 0.5.2), rlang (>=
-        1.0.5)
+        1.0.5), duckdb (>= 1.0.0), DBI (>= 1.2.2)
 Suggests: testthat
 Description: 
     A tool to plot data with a large sample size using 'shiny' and 'plotly'.
@@ -26,12 +26,12 @@ Description:
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.1
 NeedsCompilation: no
-Packaged: 2023-12-18 05:41:05 UTC; jtagu
+Packaged: 2024-10-01 11:30:38 UTC; jtagu
 Author: Junta Tagusari [aut, cre, cph],
   Jonas Van Der Donckt [cph],
   Jeroen Van Der Donckt [cph],
   Emiel Deprost [cph]
 Repository: CRAN
-Date/Publication: 2023-12-18 05:50:02 UTC
+Date/Publication: 2024-10-01 13:50:02 UTC

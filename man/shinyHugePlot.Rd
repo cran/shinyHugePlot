@@ -2,8 +2,8 @@
 % Please edit documentation in R/shinyHugePlot.R
 \docType{package}
 \name{shinyHugePlot}
-\alias{shinyHugePlot}
 \alias{shinyHugePlot-package}
+\alias{shinyHugePlot}
 \title{shinyHugePlot}
 \description{
 An interactive plot for data with a large sample size using \code{shiny}

@@ -1,3 +1,9 @@
+# shinyHugePlot 0.3.0
+
+* The figure can be drawn using data sources and a formula
+* Candle-stick plot is supported
+
+
 # shinyHugePlot 0.2.6
 
 * Arguments of `dplyr::across` were given

@@ -41,6 +41,7 @@ if no values are assigned.
 \itemize{
 \item \href{#method-plotly_datahandler-new}{\code{plotly_datahandler$new()}}
 \item \href{#method-plotly_datahandler-set_trace_data}{\code{plotly_datahandler$set_trace_data()}}
+\item \href{#method-plotly_datahandler-srcs_to_df}{\code{plotly_datahandler$srcs_to_df()}}
 \item \href{#method-plotly_datahandler-plotly_data_to_df}{\code{plotly_datahandler$plotly_data_to_df()}}
 \item \href{#method-plotly_datahandler-clone}{\code{plotly_datahandler$clone()}}
 }
@@ -55,6 +56,9 @@ will be included in the instance (as a reference).
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{plotly_datahandler$new(
   figure = NULL,
+  srcs = NULL,
+  formula = NULL,
+  srcs_ext = NULL,
   legend_options = list(name_prefix = "<b style=\\"color:sandybrown\\">[S]</b> ",
     name_suffix = "", xdiff_prefix = "<i style=\\"color:#fc9944\\"> ~", xdiff_suffix =
     "</i>"),
@@ -68,6 +72,11 @@ will be included in the instance (as a reference).
 \describe{
 \item{\code{figure}}{\code{plotly} object.
 The traces of this object will be down-sampled.}
+
+\item{\code{srcs, srcs_ext, formula}}{Character and formula, optional.
+\code{srcs} is the path of the source data (or directory).
+When a directory is specified, \code{srcs_ext} is the extension of the source file.
+\code{formula} is the formula to extract the data from the source data.}
 
 \item{\code{legend_options}}{Named list, optional.
 Names of the elements are \code{name_prefix},
@@ -120,6 +129,31 @@ If \code{traces_df} is given, arguments in \code{...} are neglected.}
 \item{\code{append}}{Boolean, optional.
 Whether the data is append or overwrite. By default, \code{FALSE}
 (the traces are overwritten).}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-plotly_datahandler-srcs_to_df"></a>}}
+\if{latex}{\out{\hypertarget{method-plotly_datahandler-srcs_to_df}{}}}
+\subsection{Method \code{srcs_to_df()}}{
+Covert the data contained in \code{srcs} file(s) to a duck-db.
+A minimum data and the path of the database will be returned.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{plotly_datahandler$srcs_to_df(fml, srcs, srcs_ext = NULL)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{fml}}{Formula.
+The formula to extract the data from the source data.}
+
+\item{\code{srcs}}{Character.
+The name of the source file (e.g. data.parquet) or the directory can be specified.}
+
+\item{\code{srcs_ext}}{Character, optional.
+The extension of the source file, if \code{srcs} is a directory.}
 }
 \if{html}{\out{</div>}}
 }

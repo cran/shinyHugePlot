@@ -16,6 +16,8 @@
 #' @importFrom plotly add_trace subplot
 #' @importFrom tidyr unnest pivot_wider
 #' @importFrom lazyeval f_eval
+#' @importFrom DBI dbConnect dbDisconnect dbExecute dbGetQuery
+#' @importFrom duckdb duckdb
 #' @description
 #' A class for down-sampling data with a large number of samples.
 #' An instance contains (the reference of) original data, layout of the figure,
@@ -112,7 +114,7 @@ downsampler <- R6::R6Class(
     #' (\code{n_out} argument).
     #' See the constructor of the \code{plotly_datahandler} class for more
     #' information on other arguments.
-    #' @param figure,legend_options,tz,use_light_build
+    #' @param figure,srcs,srcs_ext,formula,legend_options,tz,use_light_build
     #' Arguments passed to \code{plotly_datahandler$new}.
     #' @param n_out Integer or numeric.
     #' The number of samples shown after down-sampling. By default 1000.
@@ -125,6 +127,9 @@ downsampler <- R6::R6Class(
     #'
     initialize = function(
       figure = NULL,
+      formula = NULL,
+      srcs = NULL,
+      srcs_ext = list(),
       n_out = 1000L,
       aggregator = min_max_aggregator$new(),
       tz = Sys.timezone(),
@@ -141,6 +146,9 @@ downsampler <- R6::R6Class(
       # register the data
       super$initialize(
         figure = figure,
+        srcs = srcs,
+        srcs_ext = srcs_ext,
+        formula = formula,
         legend_options = legend_options,
         tz = tz,
         use_light_build = use_light_build
@@ -266,7 +274,6 @@ downsampler <- R6::R6Class(
       # compute updated data of the traces
       private$vbmsg("Construct aggregated data using private$construct_agg_traces (downsampler$update_trace)")
       traces_update_df <- private$construct_agg_traces(relayout_order_df)
-
       # set showlegend to FALSE, if many series are output
       # because of range_stat_aggregator
       private$vbmsg("Set 'showlegend' to FALSE, if multiple series are output from 1 series (downsampler$update_trace)")
@@ -288,8 +295,9 @@ downsampler <- R6::R6Class(
       # detect the index of the trace to be updated
       private$vbmsg("Detect the index of the trace to be deleted/updated (downsampler$update_trace)")
 
-      if (is.null(self$figure$x$data) ||
-          any(purrr::map_lgl(self$figure$x$data, ~is.null(.$uid)))
+      if (
+        is.null(self$figure$x$data) ||
+        any(purrr::map_lgl(self$figure$x$data, ~is.null(.$uid)))
       ) {
         private$vbmsg("There are no traces to be update (downsampler$update_trace)")
         trace_idx_update <- integer()
@@ -357,6 +365,24 @@ downsampler <- R6::R6Class(
       assertthat::assert_that(inherits(n_out, c("numeric", "integer")))
       assertthat::assert_that(inherits(aggregator, "aggregator"))
 
+      # auto replacement of the aggregator for the candlestick plot
+      data_type <- purrr::map_chr(
+        uid,
+        function(uid_target) {
+          if ("data" %in% colnames(private$traces_df)) {
+            cols <- colnames(private$traces_df$data[private$traces_df$uid == uid_target][[1]])
+            return(if_else(length(setdiff(c("x","y"), cols)) == 0, "xy", "candlestick"))
+          } else {
+            return("srcs")
+          }
+        }
+      )
+
+      if ("candlestick" %in% data_type) {
+        aggregator <- do.call(candlestick_aggregator$new, aggregator$parameters)
+        message("The original data is candle-stick type. Candle-stick aggregator is used.")
+      }
+
       private$ds_options <- dplyr::bind_rows(
         private$ds_options[private$ds_options[["uid"]] != uid, ],
         tibble(
@@ -401,7 +427,6 @@ downsampler <- R6::R6Class(
     relayout_order_to_df = function(
       relayout_order, reset = FALSE, reload = FALSE
       ) {
-
       assertthat::assert_that(inherits(relayout_order, "list"))
 
       # show the relayout order or RESET or RELOAD notification
@@ -435,6 +460,7 @@ downsampler <- R6::R6Class(
 
       # if the update is resetd, all the xaxis is reset
       if (reset) {
+
         x_order_df <- tibble(
           xaxis = purrr::map_chr(
             self$figure$x$data,
@@ -552,6 +578,7 @@ downsampler <- R6::R6Class(
       # MAIN aggregation
 
       private$vbmsg("Aggregate the data using private$aggregate_trace (downsampler$construct_agg_traces)")
+
       traces_update_df$agg_result <- purrr::pmap(
         traces_update_df %>%
           dplyr::left_join(private$traces_df, by = "uid") %>%
@@ -592,7 +619,13 @@ downsampler <- R6::R6Class(
 
       traces_update_list <- left_join(
         traces_update_agg_df,
-        private$traces_df[, colname_from_current, with = FALSE],
+        private$traces_df[, colname_from_current, with = FALSE] %>%
+          dplyr::mutate(
+            type = case_when(
+              private$ds_options$aggregator_name== "candlestick_aggregator" ~ "candlestick",
+              TRUE ~ "scatter"
+            )
+          ),
         by = "uid"
       ) %>%
         as.list() %>%
@@ -611,35 +644,77 @@ downsampler <- R6::R6Class(
     # MAIN aggregation process
     # it returns the aggregated trace and the name in data frame
     aggregate_trace = function(
-      data, start, end, name, legendgroup, aggregator, n_out, ...
+      data, start, end, xaxis, name, legendgroup, aggregator, n_out, customdatasrc = NULL, ...
       ) {
 
-      private$vbmsg("Extract data using start/end (downsampler$aggregate_trace)")
-      # extract data
-      if (!is.na(start) && length(start) > 0 &&
-          !is.na(end)   && length(end)   > 0) {
-        data_orig <- data[x >= start & x <= end]
+      if (is.null(customdatasrc)) {
+        private$vbmsg("Extract data using start/end (downsampler$aggregate_trace)")
+        # extract data
+        if (!is.na(start) && length(start) > 0 &&
+            !is.na(end)   && length(end)   > 0) {
+          data_orig <- data[x >= start & x <= end]
+        } else {
+          data_orig <- data
+        }
+
+        # number of the extracted data
+        nrow_orig <- nrow(data_orig)
+
+        # even if it is no data, extract 4 data, not to delete the plot
+        if (nrow_orig < 4) {
+          private$vbmsg("No samples were found so nearest 4 samples are used (downsampler$aggregate_trace)")
+          n_less_than_start <- nrow(data[x < start])
+          data_orig <- rbind(
+            data[x < start][n_less_than_start - c(1, 0),],
+            data[x > end][1:2,]
+            )
+        }
+
+        private$vbmsg("Set x and y values")
+
+        x <- data_orig$x
+
+        if ("y" %in% colnames(data_orig)) {
+          y <- data_orig$y
+        } else {
+          y <- list(open = data_orig$open, high = data_orig$high,
+                    low = data_orig$low, close = data_orig$close)
+        }
       } else {
+        x <- xaxis
+        y <- name
         data_orig <- data
-      }
 
-      # even if it is no data, extract 4 data, not to delete the plot
-      if (nrow(data_orig) < 4) {
-        private$vbmsg("No samples were found so nearest 4 samples are used (downsampler$aggregate_trace)")
-        n_less_than_start <- nrow(data[x < start])
-        data_orig <- rbind(
-          data[x < start][n_less_than_start - c(1, 0),],
-          data[x > end][1:2,]
+
+        srcs_name <- basename(customdatasrc) %>% stringr::str_remove("\\..*$")
+        con <- DBI::dbConnect(duckdb::duckdb(), dbdir = customdatasrc)
+
+        if (all(!is.na(start), !is.na(end))) {
+
+          query_range <- paste0(
+            # "where x > TIMESTAMP '2022-11-09 03:11:00.12345'"
+            "where x between ",
+            "TIMESTAMP '", as.character(as.POSIXct(start, tz = "UTC")), "'",
+            " and TIMESTAMP '", as.character(as.POSIXct(end, tz = "UTC")), "'"
           )
+        } else {
+          query_range <- ""
+        }
+
+        nrow_orig <- DBI::dbExecute(
+          con,
+          paste0(
+            "create table tmp_data as select * from original_data ", query_range
+          )
+        )
+
+        DBI::dbDisconnect(con)
       }
 
-      # number of the extracted data
-      nrow_orig <- nrow(data_orig)
       # down-sample x and y
       private$vbmsg("Aggregation using aggregator$aggregate (downsampler$aggregate_trace)")
-      data_agg <- aggregator$
-        aggregate(
-          x = data_orig$x, y = data_orig$y, n_out = n_out
+      data_agg <- aggregator$aggregate(
+          x = x, y = y, n_out = n_out, db = customdatasrc
         )%>%
         data.table::setDT() %>%
         merge(
@@ -688,6 +763,7 @@ downsampler <- R6::R6Class(
 
       # add the range of the data if the aggregator is rng_aggregator
       if (inherits(aggregator, "rng_aggregator")) {
+
         list_attr_rng <- aggregator$as_plotly_range(
           x = data_agg$x, y = data_agg$y,
           ylwr = data_agg$ylwr, yupr = data_agg$yupr
@@ -710,6 +786,7 @@ downsampler <- R6::R6Class(
 
     # verbose
     verbose = FALSE,
+
     vbmsg = function(msg) {
       if (private$verbose) {
         message(msg)

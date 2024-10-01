@@ -53,8 +53,7 @@ Constructor of the aggregator.
   x_y_ratio = 1,
   interleave_gaps,
   coef_gap,
-  NA_position,
-  accepted_datatype = c("numeric", "integer", "character", "factor", "logical")
+  NA_position
 )}\if{html}{\out{</div>}}
 }
 
@@ -69,7 +68,7 @@ assuming 2 is the unit length of \code{x}
 (and 1 is always the unit length of \code{y}).
 The unit length is employed to calculate the area of the triangles.}
 
-\item{\code{interleave_gaps, coef_gap, NA_position, accepted_datatype, ...}}{Arguments pass to the constructor of \code{aggregator} object.
+\item{\code{interleave_gaps, coef_gap, NA_position, ...}}{Arguments pass to the constructor of \code{aggregator} object.
 Note that \code{accepted_datatype} has default value.
 Downsample with the Largest Triangle Three Buckets (LTTB) aggregation method}
 }

@@ -13,9 +13,11 @@ rng_aggregator <- R6::R6Class(
   public = list(
     #' @description
     #' Constructor of the Aggregator.
-    #' @param interleave_gaps,coef_gap,NA_position,accepted_datatype,...
+    #' @param interleave_gaps,coef_gap,NA_position,...
     #' Arguments pass to the constructor of \code{aggregator} object.
-    initialize = function(interleave_gaps, coef_gap, NA_position, accepted_datatype, ...) {
+    initialize = function(
+      interleave_gaps, coef_gap, NA_position, ...
+    ) {
       args <- c(as.list(environment()), list(...))
       do.call(super$initialize, args)
     },
@@ -36,6 +38,10 @@ rng_aggregator <- R6::R6Class(
         all(is.na(x) - is.na(ylwr) == 0) && all(is.na(x) - is.na(yupr) == 0),
         msg = "Invalid NAs are included in the data"
       )
+
+      if (is.null(ylwr) | is.null(yupr)) {
+        return(NULL)
+      }
 
       cmpt_na_sep <- function(x) {
         split(x[!is.na(x)], cumsum(is.na(x))[!is.na(x)])
@@ -102,5 +108,6 @@ rng_aggregator <- R6::R6Class(
 
   ),
   private = list(
+    accepted_datatype = c("numeric", "integer", "character", "factor", "logical")
   )
 )

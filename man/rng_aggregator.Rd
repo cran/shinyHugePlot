@@ -44,19 +44,13 @@ A super class for describing \code{aggregator} that returns \code{x}, \code{y},
 \subsection{Method \code{new()}}{
 Constructor of the Aggregator.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{rng_aggregator$new(
-  interleave_gaps,
-  coef_gap,
-  NA_position,
-  accepted_datatype,
-  ...
-)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{rng_aggregator$new(interleave_gaps, coef_gap, NA_position, ...)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{interleave_gaps, coef_gap, NA_position, accepted_datatype, ...}}{Arguments pass to the constructor of \code{aggregator} object.}
+\item{\code{interleave_gaps, coef_gap, NA_position, ...}}{Arguments pass to the constructor of \code{aggregator} object.}
 }
 \if{html}{\out{</div>}}
 }

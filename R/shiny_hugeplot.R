@@ -33,9 +33,12 @@
 #' If a \code{downsampler} object is given, the data, layout, and
 #' down-sampling options for aggregating original data of it will be used for
 #' constructing \code{shiny} application.
+#' If a \code{formula} is given, the data will be saved and loaded using duck-db.
+#' The sources of the data (\code{srcs}) must be given as a character string
 #' @param y Numeric vector, optional.
 #' y values of the figure of \code{shiny} application,
 #' which is required if the \code{obj} argument is used as the x values.
+#' @param srcs Character, used when a \code{formula} is given as the \code{obj}.
 #' @param tz Timezone, optional.
 #' It is used to convert the \code{nanotime} to the time displayed in the figure.
 #' By default, \code{Sys.timezone()}.
@@ -129,15 +132,15 @@ shiny_hugeplot.default <- function(
     )
 
   # change x values and axis type, if necessary
-  if (inherits(x, "integer64")) {
+  if (inherits(x, c("integer64", "POSIXct"))) {
 
-    tz_hms <- format(as.POSIXct("1970-01-01", tz), "%z") %>%
-      stringr::str_replace("^(\\-?)\\+?([0-9]{1,2})([0-9]{2})", "\\1\\2:\\3:00")
-    x <- (x + nanotime::as.nanoduration(tz_hms)) %>%
-      format("%Y-%m-%d %H:%M:%E9S")
-    args$plotly_layout_options$xaxis$type <- "date"
-
-  } else if (inherits(x, "POSIXt")) {
+    # tz_hms <- format(as.POSIXct("1970-01-01", tz), "%z") %>%
+    #   stringr::str_replace("^(\\-?)\\+?([0-9]{1,2})([0-9]{2})", "\\1\\2:\\3:00")
+    # x <- (x + nanotime::as.nanoduration(tz_hms)) %>%
+    #   format("%Y-%m-%d %H:%M:%E9S")
+  #   args$plotly_layout_options$xaxis$type <- "date"
+  #
+  # } else if (inherits(x, "POSIXt")) {
 
     args$plotly_layout_options$xaxis$type <- "date"
   }
@@ -160,6 +163,42 @@ shiny_hugeplot.default <- function(
   args$obj <- fig
 
   # proceed to shiny_hugeplot.plotly
+  app <- do.call(shiny_hugeplot, args)
+  if (run_shiny) {
+    invisible()
+  } else{
+    return(app)
+  }
+}
+
+
+#' @rdname shiny_hugeplot
+#' @export
+shiny_hugeplot.formula <- function(
+    obj = NULL,
+    srcs = NULL,
+    n_out = 1000L,
+    aggregator = min_max_aggregator$new(),
+    run_shiny = TRUE,
+    use_light_build = TRUE,
+    fread_options = list(),
+    downsampler_options = list(),
+    plotly_options = list(type = "scatter", mode = "lines"),
+    plotly_layout_options = list(),
+    shiny_options = list(),
+    width = "100%", height = "600px",
+    verbose = FALSE,
+    ...
+) {
+
+  args <- c(as.list(environment()), list(...))
+  assertthat::assert_that(inherits(args$srcs, "character"))
+  assertthat::assert_that(file.exists(args$srcs) || dir.exists(args$srcs))
+
+  args$obj <- downsampler$new(formula = args$obj, srcs=args$srcs)
+  args$srcs <- NULL
+
+  # proceed to shiny_hugeplot.default
   app <- do.call(shiny_hugeplot, args)
   if (run_shiny) {
     invisible()
@@ -327,7 +366,7 @@ shiny_hugeplot.downsampler <- function(
       htmltools::div(
         selectizeInput(
           "agg_selector", label = "Aggregator",
-          choices = list_aggregators() %>% str_subset("^[^(cus)]"),
+          choices = list_aggregators() %>% str_subset("^(?!custom)"),
           select = ds$downsample_options$aggregator_name[1]
         ),
         numericInput(
@@ -350,6 +389,7 @@ shiny_hugeplot.downsampler <- function(
     output$fig <- renderPlotly(ds$figure)
     observe(
       {
+
         agg_class_input <- input[["agg_selector"]]
 
         if (input[["agg_selector"]] == "null_aggregator") {
@@ -387,6 +427,7 @@ shiny_hugeplot.downsampler <- function(
     )
 
     output[["relayout_order"]] <- renderPrint({
+
       relayout_order <- plotly::event_data("plotly_relayout")
       if (is.null(relayout_order)) {
         return()

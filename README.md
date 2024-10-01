@@ -32,6 +32,13 @@ interfaces) automatically provides new samples and slight fluctuations
 in the data are displayed. Both the overall and slight fluctuations of
 the data can be accurately understood.
 
+When you would like to know the detail of this package or to cite this
+package, please find the following article.
+
+Tagusari, J. (2023). shinyHugePlot: An R package for displaying the
+features of data with a huge sample size. SoftwareX, 24, 101583.
+<https://doi.org/10.1016/j.softx.2023.101583>
+
 ## Installation
 
 You can install shinyHugePlot from CRAN like so:
@@ -59,15 +66,23 @@ as follows:
 library(tidyverse)
 library(nanotime)
 
-d <- tibble::tibble(
-    x = seq(0, 1e6),
-    t = nanotime::nanotime(Sys.time()) + seq(0, 1e6) * 7e4,
-    y1 = rnorm(1) * 1000 + (runif(1) * sin(x / 200) + sin(runif(1) * x / 200) + runif(1e6 + 1) / 10) * x / 1e3,
-    y2 = rnorm(1) * 1000 + (runif(1) * sin(x / 200) + sin(runif(1) * x / 200) + runif(1e6 + 1) / 10) * x / 1e3,
-    y3 = rnorm(1) * 1000 + (runif(1) * sin(x / 200) + sin(runif(1) * x / 200) + runif(1e6 + 1) / 10) * x / 1e3,
-    y4 = rnorm(1) * 1000 + (runif(1) * sin(x / 200) + sin(runif(1) * x / 200) + runif(1e6 + 1) / 10) * x / 1e3,
-    y5 = rnorm(1) * 1000 + (runif(1) * sin(x / 200) + sin(runif(1) * x / 200) + runif(1e6 + 1) / 10) * x / 1e3
-  )
+create_big_data <- function(n = 1e6) {
+  x <- seq(0, n)
+  t <- nanotime::nanotime(Sys.time()) + seq(0, n) * 7e4
+  ra <- rnorm(5)
+  rb <- runif(5)
+  rc <- rexp(5)
+  
+  y1 = ra[1] * 1000 + (rb[1] * sin(x / 200) + sin(rc[1] * x / 200) + runif(n + 1) / 10) * x / 1e3
+  y2 = ra[2] * 1000 + (rb[2] * sin(x / 200) + sin(rc[2] * x / 200) + runif(n + 1) / 10) * x / 1e3
+  y3 = ra[3] * 1000 + (rb[3] * sin(x / 200) + sin(rc[3] * x / 200) + runif(n + 1) / 10) * x / 1e3
+  y4 = ra[4] * 1000 + (rb[4] * sin(x / 200) + sin(rc[4] * x / 200) + runif(n + 1) / 10) * x / 1e3
+  y5 = ra[5] * 1000 + (rb[5] * sin(x / 200) + sin(rc[5] * x / 200) + runif(n + 1) / 10) * x / 1e3
+  
+  return(tibble(x,t,y1,y2,y3,y4,y5))
+}
+
+d <- create_big_data(1e6)
 
 d_long <- tidyr::pivot_longer(d, cols = -c(x, t))
 ```
@@ -195,7 +210,7 @@ The layout of the plot(s) is controlled by `shiny`. You can customize
 the layout.
 
 ``` r
-fig <- plot_ly(x = d$x, y = d$y, type = "scatter", mode = "lines") 
+fig <- plot_ly(x = d$x, y = d$y1, type = "scatter", mode = "lines") 
 
 ds <- downsampler$new(figure = fig)
 
@@ -207,6 +222,33 @@ server <- function(input, output, session) {
   output$hp <- renderPlotly(ds$figure)
   observeEvent(plotly::event_data("plotly_relayout"),{
     updatePlotlyH(session, "hp", plotly::event_data("plotly_relayout"), ds)
+  })
+}
+
+shinyApp(ui = ui, server = server)
+```
+
+The following example dynamically select a series to which a
+down-sampler is applied. (This script is by Ivo Kwee)
+
+``` r
+ui <- fluidPage(
+  selectInput("trace", "trace", c("y1","y2","y3","y4","y5"), selected='y2'),
+  plotlyOutput(outputId = "hp", width = "800px", height = "600px")
+)
+
+server <- function(input, output, session) {  
+  ds <- NULL
+  output$hp <- renderPlotly({
+    k <- input$trace
+    p <- plot_ly(x = d$x, y = d[[k]], type = "scatter", mode = "lines")
+    ds <<- downsampler$new(figure = p)
+    ds$figure
+  })  
+  observeEvent(plotly::event_data("plotly_relayout"),{
+    if(!is.null(ds)) {
+      updatePlotlyH(session, "hp", plotly::event_data("plotly_relayout"), ds)
+    }
   })
 }
 
@@ -250,6 +292,107 @@ shiny_hugeplot(fig, n_out = 100, aggregator = range_stat_aggregator$new())
 ``` r
 fig <- plot_ly(x = d$x, y = d$y1, type = "scatter", mode = "lines") 
 shiny_hugeplot(fig, aggregator = eLTTB_aggregator$new())
+```
+
+### Example for applying a custom aggregator
+
+A custom aggregator can be defined and used in this packages.
+
+The following example uses custom statistics. Note that the values may
+contain `NA` and the functions to compute statistics need to handle it.
+
+``` r
+fig <- plot_ly(x = d$x, y = d$y1, type = "scatter", mode = "lines") 
+shiny_hugeplot(
+  fig, n_out = 100, 
+  aggregator = range_stat_aggregator$new(
+    ylwr = function(x) quantile(x, 0.25, na.rm = T),
+    y    = function(x) median(x, na.rm = T),
+    yupr = function(x) mean(x, na.rm = T) + sd(x, na.rm = T)
+  )
+)
+```
+
+A custom function is applied in the following example, where, (1) the
+data is divided into 1000 parts, (2) for each part, a sample of which x
+and y value are the mean and median is selected.
+
+``` r
+fig <- plot_ly(x = d$x, y = d$y1, type = "scatter", mode = "lines") 
+shiny_hugeplot(
+  fig, n_out = 1000, 
+  aggregator = custom_stat_aggregator$new(
+    xmean = TRUE,
+    yfunc = function(x) median(x, na.rm = T)
+  )
+)
+```
+
+If the `xmean` argument is set to `FALSE`, y value(s) are sampled using
+`yfunc` and the x value(s) that give the y value(s) are sampled.
+
+``` r
+fig <- plot_ly(x = d$x, y = d$y1, type = "scatter", mode = "lines") 
+shiny_hugeplot(
+  fig, n_out = 1000, 
+  aggregator = custom_stat_aggregator$new(
+    xmean = FALSE,
+    yfunc = function(x) quantile(x, c(0.25,0.75), na.rm = T)
+  )
+)
+```
+
+### Example of automatic update
+
+With the following `server` function, down-sampling is applied every 5
+seconds and it is not applied even when the user specified a new data
+range.
+
+``` r
+ui <- fluidPage(
+  plotlyOutput(outputId = "hp", width = "800px", height = "600px")
+)
+
+server <- function(input, output, session) {
+  output$hp <- renderPlotly(ds$figure)
+ 
+  observe({
+    invalidateLater(5000, session)
+    isolate(
+      updatePlotlyH(session, "hp", plotly::event_data("plotly_relayout"), ds)
+    )
+  })
+}
+
+shinyApp(ui = ui, server = server)
+```
+
+### Example of candlestick chart
+
+``` r
+library(quantmod)
+getSymbols(Symbols = "AAPL", from = "2023-01-01")
+aapl <- as.data.frame(AAPL)
+
+fig <- plot_ly(
+  x = row.names(aapl), 
+  open = aapl$AAPL.Open, 
+  high = aapl$AAPL.High, 
+  low = aapl$AAPL.Low, 
+  close = aapl$AAPL.Close, 
+  type = "candlestick"
+  )
+
+shiny_hugeplot(fig, n_out = 100)
+```
+
+### Data sampling using Duck-DB (Experimental)
+
+``` r
+data(noise_fluct)
+arrow::write_parquet(noise_fluct, "noise_fluct.parquet")
+
+shiny_hugeplot(f1000 ~ time, "noise_fluct.parquet")
 ```
 
 ## LICENSE
